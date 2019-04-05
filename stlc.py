@@ -1,3 +1,6 @@
+# TODO: Type inference: should generate the whole expr's type and return
+# TODO  a dict of assignments to the type variables in subexpr's mgt.
+# TODO  also generate a dict of all subexpr's type.
 class Type:
     def substitute(self, tvar, tp):
         return self
@@ -53,6 +56,29 @@ class FuncType(Type):
 
     def __hash__(self):
         return self._h
+
+
+class ConstantType(Type):  # TODO: fill in stub
+    def __init__(self):
+        pass
+
+    def substitute(self, tvar, tp):
+        return self
+
+    def __eq__(self, other):
+        return self is other
+
+    def __repr__(self):
+        return "Type"
+
+    def __hash__(self):
+        return 0
+
+    def __sub__(self, other):
+        return FuncType(self, other)
+
+    def FV(self):
+        return set()
 
 
 class Expression:
@@ -167,6 +193,28 @@ class Application(Expression):
 
     def FV(self):
         return set.union(self.head.FV(), self.body.FV())
+
+    def __hash__(self):
+        return self._h
+
+
+class Constant(Expression):
+    def __init__(self, name, tp: ConstantType):
+        self.name = name
+        self.tp = tp
+        self._h = hash(self.name)
+
+    def __eq__(self, other):
+        return self.name == other.name and self.tp == other.tp
+
+    def __repr__(self):
+        return self.name
+
+    def reduction(self):
+        return self
+
+    def FV(self):
+        return set()
 
     def __hash__(self):
         return self._h
