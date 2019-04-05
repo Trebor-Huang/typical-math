@@ -1,3 +1,60 @@
+class Type:
+    def substitute(self, tvar, tp):
+        return self
+
+    def __eq__(self, other):
+        return self is other
+
+    def __repr__(self):
+        return "Type"
+
+    def __hash__(self):
+        return 0
+
+    def __sub__(self, other):
+        return FuncType(self, other)
+
+    def FV(self):
+        return set()
+
+
+class TypeVar(Type):
+    def __init__(self, name=""):
+        self.name = name
+        self._h = hash(id(self))
+
+    def substitute(self, tvar, tp):
+        return self if self != tvar else tp
+
+    def __repr__(self):
+        return self.name
+
+    def FV(self):
+        return {self}
+
+    def __hash__(self):
+        return self._h
+
+
+class FuncType(Type):
+    def __init__(self, domain, codomain):
+        self.dom = domain
+        self.cod = codomain
+        self._h = hash(domain) ^ hash(codomain) ^ 0x1353123
+
+    def substitute(self, tvar, tp):
+        return self if self != tvar else tp
+
+    def __repr__(self):
+        return f"({repr(self.dom)} -> {repr(self.cod)})"
+
+    def FV(self):
+        return set.union(self.dom.FV(), self.cod.FV())
+
+    def __hash__(self):
+        return self._h
+
+
 class Expression:
     def substitute(self, var, subs):
         return self
@@ -115,41 +172,13 @@ class Application(Expression):
         return self._h
 
 
-if __name__ == '__main__':
-    # -----      Variable Definition     -----
-    x = Variable('x')
-    y = Variable('y')
-    z = Variable('z')
-    # -----        The SKI Basis         -----
-    #    S, K and Id defined below can produce
-    # all lambda expressions up to alpha/beta/
-    # eta conversions.
-    Id = Abstraction(x, x)  # Alternatively I
-    K = Abstraction(x, Abstraction(y, x))
-    print("K =", K)
-    KI = K(Id).reduction()
-    print("K I =",KI)
-    print("KI(x).reduction() == Id :",KI(x).reduction() == Id)
-    S = (x - (y - (z - ((x(z))(y(z))))))
-    print("S =",S)
-    SKK = S(K)(K)
-    print("SKK =", SKK.reduction())
-    # -----         The X Basis          -----
-    #    Surprisingly, X alone can represent
-    # all lambda terms. There are many more of
-    # this kind.
-    X = (x - (x(S)(K)))
-    print("X (X (X X)) =", (X(X(X(X)))).reduction())
-    print("X (X (X (X X))) =", (X(X(X(X(X))))).reduction())
-    # -----          The Omega           -----
-    omega = (x - (x(x)))
-    Omega = omega(omega)
-    print("Omega =", Omega)
-    try:
-        print(Omega.reduction())
-    except RuntimeError as e:
-        print('Omega has no normal form.')
-    Y = (y - ((x - (y(x)(x)))(x - (y(x)(x)))))
-    # -----   The Fixpoint combinator Y  -----
-    print("Fixpoint combinator Y =", Y.reduction())
-    print("Y(KI) =", Y(KI).reduction())  # Should be exactly Id.
+class Constraint:  # Wrapper class for constraint equations
+    def __init__(self, lhs, rhs):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __repr__(self):
+        return repr(self.lhs) + " == " + repr(self.rhs)
+
+
+#
