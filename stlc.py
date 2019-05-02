@@ -1,84 +1,75 @@
-# TODO: Type inference: should generate the whole expr's type and return
-# TODO  a dict of assignments to the type variables in subexpr's mgt.
-# TODO  also generate a dict of all subexpr's type.
-class Type:
-    def substitute(self, tvar, tp):
-        return self
+from unification.basics import Expression as uExp, Variable as uVar, Constructor as uCons, Function as uFunc
+from unification.unify import Constraint, unify
 
+
+class Type(uExp):
     def __eq__(self, other):
         return self is other
 
     def __repr__(self):
         return "Type"
 
-    def __hash__(self):
-        return 0
-
     def __sub__(self, other):
         return FuncType(self, other)
 
-    def FV(self):
-        return set()
 
+class TypeVar(uVar, Type):
+    uuid_cur = 0
 
-class TypeVar(Type):
-    def __init__(self, name=""):
-        self.name = name
-        self._h = hash(id(self))
-
-    def substitute(self, tvar, tp):
-        return self if self != tvar else tp
+    def __init__(self, name):
+        super().__init__(name)
+        self.uuid = TypeVar.uuid_cur
+        TypeVar.uuid_cur += 1
 
     def __repr__(self):
-        return self.name
+        return f"T{str(self.uuid)}"  # f"TYPE<{repr(self.name)}>"
 
-    def FV(self):
-        return {self}
+
+class Arrow(uCons):
+    def __init__(self):
+        super().__init__('Arrow', 2)
+
+    def __eq__(self, other):
+        return isinstance(other, Arrow)
+
+    def __repr__(self):
+        return '->'
+
+    def __call__(self, dom, cod):
+        return FuncType(dom, cod)
 
     def __hash__(self):
-        return self._h
+        return 0
 
 
-class FuncType(Type):
+To = Arrow()
+
+
+class FuncType(Type, uFunc):
     def __init__(self, domain, codomain):
+        super().__init__(To, (domain, codomain))
         self.dom = domain
         self.cod = codomain
-        self._h = hash(domain) ^ hash(codomain) ^ 0x1353123
-
-    def substitute(self, tvar, tp):
-        return self if self != tvar else tp
 
     def __repr__(self):
         return f"({repr(self.dom)} -> {repr(self.cod)})"
 
-    def FV(self):
-        return set.union(self.dom.FV(), self.cod.FV())
-
-    def __hash__(self):
-        return self._h
+    def substitute(self, var, sub):
+        return FuncType(self.dom.substitute(var, sub), self.cod.substitute(var, sub))
 
 
-class ConstantType(Type):  # TODO: fill in stub
-    def __init__(self):
-        pass
-
-    def substitute(self, tvar, tp):
-        return self
+class ConstantType(Type, uExp):
+    def __init__(self, name):
+        self.name = name
 
     def __eq__(self, other):
-        return self is other
+        return isinstance(other, ConstantType) and self.name == other.name
 
     def __repr__(self):
-        return "Type"
+        return self.name
 
     def __hash__(self):
-        return 0
-
-    def __sub__(self, other):
-        return FuncType(self, other)
-
-    def FV(self):
-        return set()
+        return hash(self.name)
 
 
 class Expression:
@@ -99,6 +90,9 @@ class Expression:
 
     def __call__(self, arg):
         return Application(self, arg)
+
+    def __rsub__(self, vart):
+        return Abstraction(*vart, self)
 
     def __hash__(self):
         return 0
@@ -124,31 +118,29 @@ class Variable(Expression):
     def FV(self):
         return {self}
 
-    def __sub__(self, body):
-        return Abstraction(self, body)
-
     def __hash__(self):
         return self._h
 
 
 class Abstraction(Expression):
-    def __init__(self, var, body):
+    def __init__(self, var, vtype, body):
         self.bv = Variable(var.name)
+        self.vtype = vtype  # Type annotation
         self.body = body.substitute(var, self.bv)
         self._h = hash(self.bv) ^ hash(self.body) ^ 0x123456
 
     def __eq__(self, other):
-        return isinstance(other, Abstraction) and \
+        return isinstance(other, Abstraction) and self.vtype == other.vtype and \
                self.body == other.body.substitute(other.bv, self.bv)
 
     def __repr__(self):
-        return "(\\" + repr(self.bv) + "." + repr(self.body) + ")"
+        return "(\\" + repr(self.bv) + (":" + repr(self.vtype) if self.vtype is not None else '') + "." + repr(self.body) + ")"
 
     def substitute(self, var, subs):
         if var == self.bv:
             raise ValueError("Bound variable leakage.")
         else:
-            return Abstraction(self.bv, self.body.substitute(var, subs))
+            return Abstraction(self.bv, self.vtype, self.body.substitute(var, subs))
 
     def reduction(self):
         if isinstance(self.body, Application) and \
@@ -158,7 +150,6 @@ class Abstraction(Expression):
             return Abstraction(self.bv, self.body.reduction())
 
     def FV(self):
-        # print('[DEBUG]'+str(self.body)+" - "+str(self.body.FV()))
         return self.body.FV() - {self.bv}
 
     def __hash__(self):
@@ -220,13 +211,68 @@ class Constant(Expression):
         return self._h
 
 
-class Constraint:  # Wrapper class for constraint equations
-    def __init__(self, lhs, rhs):
-        self.lhs = lhs
-        self.rhs = rhs
-
-    def __repr__(self):
-        return repr(self.lhs) + " == " + repr(self.rhs)
+# TODO: atomic operations on constants, as a subclass of Abstraction
 
 
-#
+def variables(expr: Expression):  # This is used only for inference, so it is not incorporated into the classes
+    if isinstance(expr, Variable):
+        return {expr}
+    elif isinstance(expr, Abstraction):
+        return {expr.bv}.union(variables(expr.body))
+    elif isinstance(expr, Application):
+        return set.union(variables(expr.head), variables(expr.body))
+
+
+def traverse(expr: Expression):
+    if isinstance(expr, Variable):
+        return [(expr,)]
+    elif isinstance(expr, Abstraction):
+        return [(expr.bv, expr)] + [l+(expr,) for l in traverse(expr.body)] + [(expr,)]
+    elif isinstance(expr, Application):
+        return [l+(expr,) for l in traverse(expr.head)] + [l+(expr,) for l in traverse(expr.body)] + [(expr,)]
+
+
+def _infer(expr):
+    # --- I. instantiate type variables ---
+    # Each variable x gets a type variable u(x)
+    # Each occurrence of an expression E gets a type var v(E)
+    vrs = variables(expr)
+    trs = traverse(expr)
+    u = {x: TypeVar(x) for x in vrs}
+    v = {r: TypeVar(r) for r in trs}
+    # --- II. generate constraints ---
+    # u(x) = v(x) for each occurrence of a variable x
+    # v(e1) = v(e2) -> v((e1 e2)) for each occurrence of a subexpression (e1 e2)
+    # v(\x:None.e) = v(x) -> v(e) for each occurrence of a subexpression \x:None.e
+    # u(x) = T for each occurence of a subexpression \x:T.e
+    constraints = []  # can be merged
+    constraints.extend(Constraint(v[r], u[r[0]]) for r in trs if isinstance(r[0], Variable))
+    constraints.extend(Constraint(v[(e[0].head,)+e], FuncType(v[(e[0].body,)+e], v[e]))
+                       for e in trs if isinstance(e[0], Application))
+    constraints.extend(Constraint(v[e], FuncType(v[(e[0].bv,)+e],v[(e[0].body,)+e])) if e[0].vtype is None else
+                       Constraint(u[e[0].bv], e[0].vtype)
+                       for e in trs if isinstance(e[0], Abstraction))
+    # --- III. UNIFY!!! ---
+    return unify(constraints)
+
+
+def infer(expr):
+    rs = _infer(expr)
+    t = [c.rhs for c in rs if isinstance(c.lhs.name, tuple) and c.lhs.name[0]==expr]
+    assert len(t) == 1
+    return t[0]
+
+
+if __name__ == '__main__':
+    x = Variable('x')
+    y = Variable('y')
+    z = Variable('z')
+    # T = ConstantType('T')
+    S = (x, None) - ((y, None) - ((z, None) - (x(z)(y(z)))))
+    print("$$$ Traversal of S $$$")
+    print(*traverse(S), sep='\n')
+    print("\n$$$ Inference result $$$")
+    print(*_infer(S), sep='\n')
+    print("\nSo there...")
+    print(infer(S))
+
