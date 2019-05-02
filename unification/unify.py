@@ -50,7 +50,7 @@ def unify(constraints, verbose=False):
             print("Current Equations State:\n" + "\n".join([str(e) for e in constraints])
                   + "\n+++++++++++++++++++\n" + str(c) + "\n")
         if c[0] == c[1]:  # DELETE
-            continue
+            solutions.append(c)
         elif isinstance(c[0], Function) and isinstance(c[1], Function):
             if c[0].constructor == c[1].constructor:  # DECOMPOSE
                 constraints.extend(map(Constraint, zip(c[0].args, c[1].args)))

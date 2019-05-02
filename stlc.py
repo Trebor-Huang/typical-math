@@ -1,5 +1,5 @@
 from unification.basics import Expression as uExp, Variable as uVar, Constructor as uCons, Function as uFunc
-from unification.unify import Constraint, unify
+from unification.unify import Constraint, unify, UnificationException
 
 
 class Type(uExp):
@@ -92,7 +92,7 @@ class Expression:
         return Application(self, arg)
 
     def __rsub__(self, vart):
-        return Abstraction(*vart, self)
+        return Abstraction(*vart, self) if isinstance(vart, tuple) else Abstraction(vart, None, self)
 
     def __hash__(self):
         return 0
@@ -121,6 +121,9 @@ class Variable(Expression):
     def __hash__(self):
         return self._h
 
+    def __sub__(self, expr):
+        return Abstraction(self, None, expr)
+
 
 class Abstraction(Expression):
     def __init__(self, var, vtype, body):
@@ -147,7 +150,7 @@ class Abstraction(Expression):
                 self.body.body == self.bv and self.bv not in self.body.head.FV():
             return self.body.head.reduction()  # eta-reduction
         else:
-            return Abstraction(self.bv, self.body.reduction())
+            return Abstraction(self.bv, self.vtype, self.body.reduction())
 
     def FV(self):
         return self.body.FV() - {self.bv}
@@ -249,16 +252,17 @@ def _infer(expr):
     constraints.extend(Constraint(v[r], u[r[0]]) for r in trs if isinstance(r[0], Variable))
     constraints.extend(Constraint(v[(e[0].head,)+e], FuncType(v[(e[0].body,)+e], v[e]))
                        for e in trs if isinstance(e[0], Application))
-    constraints.extend(Constraint(v[e], FuncType(v[(e[0].bv,)+e],v[(e[0].body,)+e])) if e[0].vtype is None else
-                       Constraint(u[e[0].bv], e[0].vtype)
+    constraints.extend(Constraint(v[e], FuncType(v[(e[0].bv,)+e], v[(e[0].body,)+e]))
                        for e in trs if isinstance(e[0], Abstraction))
+    constraints.extend(Constraint(u[e[0].bv], e[0].vtype)
+                       for e in trs if isinstance(e[0], Abstraction) and e[0].vtype is not None)
     # --- III. UNIFY!!! ---
     return unify(constraints)
 
 
 def infer(expr):
     rs = _infer(expr)
-    t = [c.rhs for c in rs if isinstance(c.lhs.name, tuple) and c.lhs.name[0]==expr]
+    t = [c.rhs for c in rs if isinstance(c.lhs.name, tuple) and c.lhs.name[0] == expr]
     assert len(t) == 1
     return t[0]
 
@@ -267,7 +271,8 @@ if __name__ == '__main__':
     x = Variable('x')
     y = Variable('y')
     z = Variable('z')
-    # T = ConstantType('T')
+    u = Variable('u')
+    T = TypeVar('T')
     S = (x, None) - ((y, None) - ((z, None) - (x(z)(y(z)))))
     print("$$$ Traversal of S $$$")
     print(*traverse(S), sep='\n')
@@ -275,4 +280,20 @@ if __name__ == '__main__':
     print(*_infer(S), sep='\n')
     print("\nSo there...")
     print(infer(S))
+    print()
+
+    omega = (x, None) - x(x)
+    print("For omega:")
+    try:
+        print(infer(omega))
+    except UnificationException as ue:
+        print(ue)
+    print()
+
+    zero = (y, FuncType(T, T)) - (x - x)
+    succ = x - (y - (z - y(x(y)(z))))
+
+    print(infer(zero), sep='\n')
+    print(infer(succ))
+
 
