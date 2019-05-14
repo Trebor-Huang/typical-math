@@ -295,5 +295,3 @@ if __name__ == '__main__':
 
     print(infer(zero), sep='\n')
     print(infer(succ))
-
-
