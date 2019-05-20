@@ -84,6 +84,8 @@ class Lookup(Judgment):
 
 class Synth(Judgment):  # The structure is strange here. We need to automate this.
     def __init__(self, ctx, expr):
+        self.ctx = ctx
+        self.expr = expr
         if isinstance(expr, Variable):
             vs = Lookup(ctx, expr)
             self.out = vs.out
@@ -91,7 +93,7 @@ class Synth(Judgment):  # The structure is strange here. We need to automate thi
         elif isinstance(expr, Application):
             as1 = Synth(ctx, expr.head)
             assert isinstance(as1.out, FuncType)
-            as2 = Check(ctx, expr.body, as1.out)
+            as2 = Check(ctx, expr.body, as1.out.dom)
             self.out = as1.out.cod
             self.derivation = (as1, as2)
         elif isinstance(expr, Abstraction):
@@ -101,7 +103,10 @@ class Synth(Judgment):  # The structure is strange here. We need to automate thi
 
 
 class Check(Judgment):
-    def __init__(self, ctx, expr, check:Type):
+    def __init__(self, ctx, expr, check: Type):
+        self.ctx = ctx
+        self.expr = expr
+        self.check = check
         if isinstance(expr, Variable):
             vc = Lookup(ctx, expr)
             if check != vc.out:
@@ -123,4 +128,13 @@ def deriv2str(j: Judgment):
 
 
 if __name__ == "__main__":
-    pass
+    A, B, C = map(ConstantType, "A B C".split())
+    x, y, z = map(Variable, "x y z".split())
+    AtB = FuncType(A, B)
+    AtBtC = FuncType(A, FuncType(B, C))
+    S = (x, AtBtC) - ((y, AtB) - ((z, A) - (x(z)(y(z)))))
+    print(S)
+    SynthS = Synth([], S)
+    print("Synthesized: S is of type %s" % str(SynthS.out))
+    CheckS = Check([], S, SynthS.out)
+    print("Checked: S is indeed of type %s" % str(CheckS.check))
