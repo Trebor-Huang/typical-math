@@ -1,4 +1,4 @@
-from LambdaCalculus.stlc import Expression, Variable, Abstraction, Application, Constant, Type, FuncType, ConstantType
+from LambdaCalculus.stlc import Variable, Abstraction, Application, Type, Constant, FuncType, ConstantType
 
 
 """
@@ -19,37 +19,7 @@ def ctx2str(ctx) -> str:
 
 class Judgment:
     def __repr__(self):
-        return "Judgment"
-
-
-class CheckJudgment(Judgment):
-    def __init__(self, ctx, term, typ):
-        self.term = term
-        self.type = typ
-        self.ctx = ctx
-
-    def __repr__(self):
-        return f"{ctx2str(self.ctx)} |- check {repr(self.term)} : {repr(self.type)}"
-
-
-class SynthJudgment(Judgment):
-    def __init__(self, ctx, term, typ):
-        self.term = term
-        self.type = typ
-        self.ctx = ctx
-
-    def __repr__(self):
-        return f"{ctx2str(self.ctx)} |- {repr(self.term)} synth ~> {repr(self.type)}"
-
-
-class LookupJudgment(Judgment):
-    def __init__(self, ctx, var, typ):
-        self.ctx = ctx
-        self.var = var
-        self.type = typ
-
-    def __repr__(self):
-        return f"{ctx2str(self.ctx)} |- {repr(self.var)} lookup ~> {repr(self.type)}"
+        return "Judgment"  # TODO
 
 
 """
@@ -57,20 +27,43 @@ Typing Rules:
 ###### Context ###### (implemented as lists of tuples)
 
 (Context validity is automatic)
+"""
 
 
--------------------------STOP
- G, x:A |- x lookup ~> A
+class Lookup(Judgment):
+    """
+    Judgments for lookup:
 
-    G |- x lookup ~> A
--------------------------POP (x!=y)
- G, y:B |- x lookup ~> A
+    -------------------------STOP
+     G, x:A |- x lookup ~> A
 
+        G |- x lookup ~> A
+    -------------------------POP (x!=y)
+     G, y:B |- x lookup ~> A
+    """
+    def __init__(self, ctx, var):
+        self.ctx = ctx
+        self.term = var
+        if len(ctx) == 0:
+            raise ValueError("Judgment not derivable.")
+        if ctx[-1][0] == self.term:
+            self.out = ctx[-1][1]
+            self.derivation = ()
+        else:
+            pop = Lookup(ctx[:-1], var)
+            self.derivation = (pop,)
+            self.out = pop.out
+
+
+"""
 ###### Type ######
 
 (Automatic: non-types cannot be expressed at all)
 
 ###### Typing ######
+"""
+
+"""
  G |- x lookup ~> A      G |- x lookup ~> A
 --------------------VC  --------------------VS
   G |- check x : A        G |- x synth ~> A
@@ -89,16 +82,45 @@ Typing Rules:
  """
 
 
-def check_judgment(j:Judgment):  # TODO: should be implemented as seperate functions?
-    if isinstance(j, LookupJudgment):
-        if j.ctx[-1][0] == j.var:
-            return None
-        else:
-            return check_judgment(LookupJudgment(j.ctx[:-1], j.var, j.type))
-    elif isinstance(j, CheckJudgment):
-        if isinstance(j.term, Variable):  # VC
-            pass
-        elif isinstance(j.term, Application):  # AC
-            pass
-        elif isinstance(j.term, Abstraction):  # LC
-            pass
+class Synth(Judgment):  # The structure is strange here. We need to automate this.
+    def __init__(self, ctx, expr):
+        if isinstance(expr, Variable):
+            vs = Lookup(ctx, expr)
+            self.out = vs.out
+            self.derivation = (vs,)
+        elif isinstance(expr, Application):
+            as1 = Synth(ctx, expr.head)
+            assert isinstance(as1.out, FuncType)
+            as2 = Check(ctx, expr.body, as1.out)
+            self.out = as1.out.cod
+            self.derivation = (as1, as2)
+        elif isinstance(expr, Abstraction):
+            ls = Synth(ctx + [(expr.bv, expr.vtype)], expr.body)
+            self.out = FuncType(expr.vtype, ls.out)
+            self.derivation = ls
+
+
+class Check(Judgment):
+    def __init__(self, ctx, expr, check:Type):
+        if isinstance(expr, Variable):
+            vc = Lookup(ctx, expr)
+            if check != vc.out:
+                raise ValueError("Judgment not derivable.")
+            self.derivation = (vc,)
+        elif isinstance(expr, Application):
+            ac1 = Synth(ctx, expr.body)
+            ac2 = Check(ctx, expr.head, FuncType(ac1.out, check))
+            self.derivation = (ac1, ac2)
+        elif isinstance(expr, Abstraction):
+            if not isinstance(check, FuncType) or expr.vtype != check.dom:
+                raise ValueError("Judgment not derivable.")
+            lc = Check(ctx + [(expr.bv, expr.vtype)], expr.body, check.cod)
+            self.derivation = lc
+
+
+def deriv2str(j: Judgment):
+    pass
+
+
+if __name__ == "__main__":
+    pass
