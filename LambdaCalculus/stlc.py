@@ -57,6 +57,9 @@ class FuncType(Type, uFunc):
     def substitute(self, var, sub):
         return FuncType(self.dom.substitute(var, sub), self.cod.substitute(var, sub))
 
+    def __eq__(self, other):
+        return isinstance(other, FuncType) and self.dom == other.dom and self.cod == other.cod
+
 
 class ConstantType(Type, uExp):
     def __init__(self, name):
@@ -272,7 +275,7 @@ if __name__ == '__main__':
     y = Variable('y')
     z = Variable('z')
     u = Variable('u')
-    T = TypeVar('T')
+    T = ConstantType("A")
     S = (x, None) - ((y, None) - ((z, None) - (x(z)(y(z)))))
     print("$$$ Traversal of S $$$")
     print(*traverse(S), sep='\n')
@@ -295,5 +298,3 @@ if __name__ == '__main__':
 
     print(infer(zero), sep='\n')
     print(infer(succ))
-
-

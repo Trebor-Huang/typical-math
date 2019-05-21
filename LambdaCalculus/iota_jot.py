@@ -1,4 +1,4 @@
-from utlc import *
+from LambdaCalculus.utlc import *
 import time
 
 # -- Constants --
