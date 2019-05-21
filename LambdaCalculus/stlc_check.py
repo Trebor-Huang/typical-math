@@ -11,8 +11,10 @@ G |- x lookup ~> A [G is a context]
 
 def ctx2str(ctx) -> str:
     s = ', '.join(f"{repr(i)}:{repr(t)}" for i, t in ctx)
-    if len(s) > 15:
+    if len(s) > 40:
         return "G..."
+    elif len(s) == 0:
+        return '*'
     else:
         return s
 
@@ -53,6 +55,9 @@ class Lookup(Judgment):
             pop = Lookup(ctx[:-1], var)
             self.derivation = (pop,)
             self.out = pop.out
+
+    def __repr__(self):
+        return ctx2str(self.ctx) + " |- " + str(self.term) + " lookup ~> " + str(self.out)
 
 
 """
@@ -99,7 +104,10 @@ class Synth(Judgment):  # The structure is strange here. We need to automate thi
         elif isinstance(expr, Abstraction):
             ls = Synth(ctx + [(expr.bv, expr.vtype)], expr.body)
             self.out = FuncType(expr.vtype, ls.out)
-            self.derivation = ls
+            self.derivation = (ls,)
+
+    def __repr__(self):
+        return ctx2str(self.ctx) + " |- " + str(self.expr) + " synth ~> " + str(self.out)
 
 
 class Check(Judgment):
@@ -120,11 +128,29 @@ class Check(Judgment):
             if not isinstance(check, FuncType) or expr.vtype != check.dom:
                 raise ValueError("Judgment not derivable.")
             lc = Check(ctx + [(expr.bv, expr.vtype)], expr.body, check.cod)
-            self.derivation = lc
+            self.derivation = (lc,)
+
+    def __repr__(self):
+        return ctx2str(self.ctx) + " |- check " + str(self.expr) + " : " + str(self.check)
 
 
-def deriv2str(j: Judgment):
-    pass
+def deriv2array(j: Judgment):
+    if len(j.derivation) == 0:
+        a = ['']
+        width = 0
+    else:
+        derivstrs = list(map(deriv2array, j.derivation))
+        derivlens = list(map(lambda l:len(l[0]), derivstrs))
+        a = []
+        while not all(len(i) == 0 for i in derivstrs):
+            a.insert(0, '  '.join(i.pop() if len(i) != 0 else " " * derivlens[n]
+                                  for n, i in enumerate(derivstrs)))
+        width = len(a[-1])
+    concl = str(j)
+    wc = len(str(j))
+    total_width = max(width, wc) + 2
+    return [ai.center(total_width, ' ') for ai in a] +\
+           ['-' * total_width] + [concl.center(total_width, ' ')]
 
 
 if __name__ == "__main__":
@@ -135,6 +161,9 @@ if __name__ == "__main__":
     S = (x, AtBtC) - ((y, AtB) - ((z, A) - (x(z)(y(z)))))
     print(S)
     SynthS = Synth([], S)
+    print(SynthS)
     print("Synthesized: S is of type %s" % str(SynthS.out))
+    print('\n'.join(deriv2array(SynthS)))
     CheckS = Check([], S, SynthS.out)
+    print(CheckS)
     print("Checked: S is indeed of type %s" % str(CheckS.check))
