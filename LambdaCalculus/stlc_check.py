@@ -1,4 +1,4 @@
-from LambdaCalculus.stlc import Variable, Abstraction, Application, Type, Constant, FuncType, ConstantType
+from LambdaCalculus.stlc import Variable, Abstraction, Application, Type, FuncType, ConstantType
 
 
 """
@@ -21,7 +21,7 @@ def ctx2str(ctx) -> str:
 
 class Judgment:
     def __repr__(self):
-        return "Judgment"  # TODO
+        return "Judgment"
 
 
 """
