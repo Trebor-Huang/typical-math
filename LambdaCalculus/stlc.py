@@ -22,7 +22,7 @@ class TypeVar(uVar, Type):
         TypeVar.uuid_cur += 1
 
     def __repr__(self):
-        return f"T{str(self.uuid)}"  # f"TYPE<{repr(self.name)}>"
+        return f"T{str(self.uuid)}"  # f"TYPE<{repr(self.ident)}>"
 
 
 class Arrow(uCons):
