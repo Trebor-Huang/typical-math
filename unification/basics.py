@@ -16,7 +16,7 @@ class Expression:
 
 
 class Variable(Expression):
-    def __init__(self, name):  # name may not be str
+    def __init__(self, name):  # ident may not be str
         self.name = name
 
     def __eq__(self, other):
