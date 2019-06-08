@@ -1,5 +1,5 @@
-from unification.basics import Expression as uExp, Variable as uVar, Constructor as uCons, Function as uFunc
-from unification.unify import Constraint, unify, UnificationException
+from Misc.unification.basics import Expression as uExp, Variable as uVar, Constructor as uCons, Function as uFunc
+from Misc.unification.unify import Constraint, unify, UnificationException
 
 
 class Type(uExp):

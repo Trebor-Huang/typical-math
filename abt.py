@@ -115,7 +115,7 @@ class Variable(ABT):
         self.sort = sort
         self.ident = ident
         self.name = str(ident) if name is None else str(name)
-        self._hash = hash(self.sort) ^ hash(self.ident) ^ hash(self.name)
+        self._hash = hash(self.sort) ^ hash(self.ident)
 
     def __repr__(self):
         return self.name
@@ -127,8 +127,8 @@ class Variable(ABT):
         return self if var != self else expr
 
     def __eq__(self, other):
-        return isinstance(other, Variable) and self.sort == other.sort and self.ident == other.ident \
-               and self.name == other.name
+        return isinstance(other, Variable) and self.sort == other.sort and self.ident is other.ident \
+              and self.name == other.name
 
     def FV(self):
         return {self}
@@ -173,6 +173,7 @@ if __name__ == "__main__":
     impl = Node("->", wff, (wff, wff))
 
     x = Variable("x", term)
+    y = Variable("y", term)
     phi = Variable("phi", wff)
 
     OpOeO = eq(plus(zero(), zero()))
@@ -180,4 +181,8 @@ if __name__ == "__main__":
     xe0_i_xp0e0 = Bind(x, impl(eq(x, zero()), eq(plus(x, zero()), zero())))
     print(xe0_i_xp0e0)
     print(xe0_i_xp0e0.sort)
+    print(hash(xe0_i_xp0e0))
+    xty = Bind(y, xe0_i_xp0e0.expr.substitute(xe0_i_xp0e0.bv, y))
+    print(xty, hash(xty))
+
 

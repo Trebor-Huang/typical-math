@@ -1,4 +1,4 @@
-from LambdaCalculus.stlc import Variable, Abstraction, Application, Type, FuncType, ConstantType
+from Misc.LambdaCalculus.stlc import Variable, Abstraction, Application, Type, FuncType, ConstantType
 
 
 """
