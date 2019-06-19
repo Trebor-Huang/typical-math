@@ -1,8 +1,14 @@
 from abt import *
 
 
-def _merge_dicts(*dicts):
-    return {k:v for d in dicts for k,v in d.items()}
+def _merge_dicts(*res):
+    ans = dict()  # TODO: maybe more elegant?
+    for r in res:
+        for k in r:
+            if k in ans and ans[k] != r[k]:
+                raise ValueError("Inconsistent substitution.")
+            ans[k] = r[k]
+    return ans
 
 
 class MetaVariable(ABT):
@@ -53,11 +59,13 @@ if __name__ == "__main__":
     phi = MetaVariable("phi", wff)
     T = MetaVariable("T", term)
 
-    OpOeO = eq(plus(zero(), zero()))
+    OpOeO = eq(plus(zero(), zero()), zero())
     xe0_i_xp0e0 = Bind(x, impl(eq(x, zero()), eq(plus(x, zero()), zero())))
 
     phi_i_Tp0e0 = Bind(y, impl(phi, eq(plus(T, zero()), zero())))
+    phi_i_TpTe0 = Bind(y, impl(phi, eq(plus(T, T), zero())))
     print(xe0_i_xp0e0.sort, phi_i_Tp0e0.sort)
 
     print(match(xe0_i_xp0e0, phi_i_Tp0e0))
+    match(xe0_i_xp0e0, phi_i_TpTe0)
 
