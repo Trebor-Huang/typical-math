@@ -47,7 +47,7 @@ class BindingSort(Sort):
 
 
 class ABT:
-    def __init__(self):  # For sub-typing hints
+    def __init__(self):  # TODO refactoring so that this method assigns common attributes
         self.sort = Sort()
         raise ValueError("ABT is an abstract class")
 
@@ -68,10 +68,11 @@ class ABT:
 
 
 class Node:
-    def __init__(self, name, sort, args):
+    def __init__(self, name, sort, args, repr=None):
         self.sort = sort
         self.name = name
         self.args = args  # A tuple of sorts
+        self._repr = (lambda t: repr % t) if isinstance(repr, str) else repr
         self._hash = hash(self.sort) ^ hash(self.name) ^ hash(self.args)
 
     def __hash__(self):
@@ -83,18 +84,25 @@ class Node:
 
 class AST(ABT):
     """An AST Node."""
+
     def __init__(self, node: Node, args: tuple):
-        assert isinstance(node, Node)
+        if not isinstance(node, Node):
+            raise TypeError("node is not of type Node.")
         self.node = node
         self.sort = node.sort
+        if len(args) != len(node.args):
+            raise ValueError("Incorrect number of arguments.")
         if not all(map(lambda t: t[0].sort == t[1], zip(args, node.args))):
             raise ValueError("Sort mismatch.")
         self.args = args
-        self._repr = f"{self.node.name}({', '.join(map(str, self.args))})"
+        self._repr = f"{self.node.name}({', '.join(map(str, self.args))})" if node._repr is None \
+            else node._repr((self.node.name, *map(str, self.args)))
         self._hash = hash(self.node) ^ hash(self.args)
         self._FV = set.union(*(e.FV() for e in self.args), set())
 
-    def __repr__(self):  # TODO: leave room for syntax output sugars
+    def __repr__(self):
+        """To customize output, pass `repr` parameter for Node.
+        It will be formatted as `repr % (self.node.name, *map(str, self.args))`"""
         return self._repr
 
     def __hash__(self):
@@ -128,7 +136,7 @@ class Variable(ABT):
 
     def __eq__(self, other):
         return isinstance(other, Variable) and self.sort == other.sort and self.ident is other.ident \
-              and self.name == other.name
+               and self.name == other.name
 
     def FV(self):
         return {self}
@@ -167,16 +175,16 @@ if __name__ == "__main__":
     wff = PrimitiveSort("wff")
     term = PrimitiveSort("term")
 
-    zero = Node("0", term, ())
-    plus = Node("+", term, (term, term))
-    eq = Node("=", wff, (term, term))
-    impl = Node("->", wff, (wff, wff))
+    zero = Node("0", term, (), lambda _: "0")
+    plus = Node("+", term, (term, term), lambda t: "( %s + %s )" % t[1:])
+    eq = Node("=", wff, (term, term), lambda t: "( %s = %s )" % t[1:])
+    impl = Node("->", wff, (wff, wff), lambda t: "( %s -> %s )" % t[1:])
 
     x = Variable("x", term)
     y = Variable("y", term)
     phi = Variable("phi", wff)
 
-    OpOeO = eq(plus(zero(), zero()))
+    OpOeO = eq(plus(zero(), zero()), zero())
     print(OpOeO)
     xe0_i_xp0e0 = Bind(x, impl(eq(x, zero()), eq(plus(x, zero()), zero())))
     print(xe0_i_xp0e0)
@@ -184,5 +192,3 @@ if __name__ == "__main__":
     print(hash(xe0_i_xp0e0))
     xty = Bind(y, xe0_i_xp0e0.expr.substitute(xe0_i_xp0e0.bv, y))
     print(xty, hash(xty))
-
-
