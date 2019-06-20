@@ -19,8 +19,13 @@ class InferenceRule:
 
 
 class Derivation:
-    def __init__(self, rule, prem, concl):
-        self.rule = rule  # TODO Check correctness of derivation.
+    def __init__(self, rule: InferenceRule, prem, concl: ABT):
+        self.rule = rule
+        try:
+            map(match, prem, rule.premises)
+        except ValueError as e:
+            pass
+
 
 
 class BidirectionalRule(InferenceRule):

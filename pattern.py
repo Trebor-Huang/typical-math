@@ -2,6 +2,7 @@ from abt import *
 
 
 def _merge_dicts(*res):
+    """Merges two dictionaries and check if they are consistent."""
     ans = dict()  # TODO: maybe more elegant?
     for r in res:
         for k in r:
