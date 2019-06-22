@@ -21,12 +21,23 @@ class InferenceRule:
 class Derivation:
     def __init__(self, rule: InferenceRule, prem, concl: ABT):
         self.rule = rule
+        assert all(map(lambda x: isinstance(x, Derivation), prem))
         try:
-            map(match, prem, rule.premises)
+            map(match, prem + [concl], rule.premises + [rule.conclusion])
         except ValueError as e:
-            pass
+            raise ValueError("Variables does not match.")
 
+    def __repr__(self):
+        return "???"  # TODO
 
 
 class BidirectionalRule(InferenceRule):
+    def __init__(self, name, premises, conclusion, auto):  # TODO
+        """auto(...?)"""
+        super().__init__(name, premises, conclusion)
+        self.auto = auto
+
+
+if __name__ == "__main__":
+    # miu
     pass
