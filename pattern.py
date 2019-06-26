@@ -1,7 +1,7 @@
 from abt import *
 
 
-def _merge_dicts(*res):
+def merge_dicts(*res):
     """Merges two dictionaries and check if they are consistent."""
     ans = dict()  # TODO: maybe more elegant?
     for r in res:
@@ -37,7 +37,7 @@ def match(expr: ABT, pattern: ABT):
         return dict()
     elif type(expr) == type(pattern) == AST:
         if expr.node == pattern.node:
-            return _merge_dicts(*map(match, expr.args, pattern.args))
+            return merge_dicts(*map(match, expr.args, pattern.args))
         else:
             raise ValueError("Node mismatch.")
     elif type(expr) == type(pattern) == Bind:

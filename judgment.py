@@ -1,5 +1,6 @@
 from abt import *
 from pattern import *
+
 judgmentSort = PrimitiveSort("judgment")
 
 
@@ -22,11 +23,30 @@ class Derivation:
     def __init__(self, rule: InferenceRule, prem, concl: ABT):
         self.rule = rule
         try:
-            map(match, prem, rule.premises)
+            prem_match = merge_dicts(*map(match, (p.conclusion for p in prem), rule.premises))
+            res_match = match(concl, rule.conclusion)
+            subs = merge_dicts(prem_match, res_match)
         except ValueError as e:
-            pass
-
+            raise ValueError("Inconsistent assignment of metavariables.")
+        self.premises = prem
+        self.conclusion = concl
+        self.assigment = subs
 
 
 class BidirectionalRule(InferenceRule):
     pass
+
+
+if __name__ == "__main__":
+    expr = PrimitiveSort("expr")
+    Zero = Node("0", expr, (), lambda _: "0")()
+    Succ = Node("S", expr, (expr,))
+    isNat = JudgmentForm("NAT", (expr,), lambda m: f"{str(m[1])} nat")
+
+    n = MetaVariable("n", expr)
+
+    Onat = InferenceRule("Onat", (), isNat(Zero))
+    Snat = InferenceRule("Snat", (isNat(n),), isNat(Succ(n)))
+
+    ZeroIsNat = Derivation(Onat, (), isNat(Zero))
+    OneIsNat = Derivation(Snat, (ZeroIsNat,), isNat(Succ(Zero)))

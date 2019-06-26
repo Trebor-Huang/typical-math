@@ -1,5 +1,6 @@
 # For abstract syntax trees and abstract binding trees.
 # from functools import lru_cache
+# TODO unification
 
 
 class Sort:
@@ -71,7 +72,7 @@ class Node:
     def __init__(self, name, sort, args, repr=None):
         self.sort = sort
         self.name = name
-        self.args = args  # A tuple of sorts
+        self.args = tuple(args)  # A tuple of sorts
         self._repr = (lambda t: repr % t) if isinstance(repr, str) else repr
         self._hash = hash(self.sort) ^ hash(self.name) ^ hash(self.args)
 
@@ -79,7 +80,7 @@ class Node:
         return self._hash
 
     def __call__(self, *args):
-        return AST(self, args)
+        return AST(self, tuple(args))
 
 
 class AST(ABT):
