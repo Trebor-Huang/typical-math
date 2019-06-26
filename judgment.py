@@ -22,6 +22,7 @@ class InferenceRule:
 class Derivation:
     def __init__(self, rule: InferenceRule, prem, concl: ABT):
         self.rule = rule
+        assert all(map(lambda x: isinstance(x, Derivation), prem))
         try:
             prem_match = merge_dicts(*map(match, (p.conclusion for p in prem), rule.premises))
             res_match = match(concl, rule.conclusion)
@@ -32,8 +33,19 @@ class Derivation:
         self.conclusion = concl
         self.assigment = subs
 
+    def __repr__(self):
+        return "???"  # TODO
+
 
 class BidirectionalRule(InferenceRule):
+    def __init__(self, name, premises, conclusion, auto):  # TODO
+        """auto(...?)"""
+        super().__init__(name, premises, conclusion)
+        self.auto = auto
+
+
+if __name__ == "__main__":
+    # miu
     pass
 
 
