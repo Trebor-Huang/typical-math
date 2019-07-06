@@ -4,6 +4,12 @@
 
 
 class Sort:
+    def __setattr__(self, key, value):
+        if not hasattr(self, key):
+            super().__setattr__(key, value)
+        else:
+            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
+
     def __repr__(self):
         return "Sort"
 
@@ -48,9 +54,8 @@ class BindingSort(Sort):
 
 
 class ABT:
-    def __init__(self):  # TODO refactoring so that this method assigns common attributes
-        self.sort = Sort()
-        raise ValueError("ABT is an abstract class")
+    def __init__(self, sort):  # TODO refactoring so that this method assigns common attributes
+        self.sort = sort
 
     def __repr__(self):
         return "ABT"
@@ -67,6 +72,12 @@ class ABT:
     def FV(self):
         return set()
 
+    def __setattr__(self, key, value):
+        if not hasattr(self, key):
+            super().__setattr__(key, value)
+        else:
+            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
+
 
 class Node:
     def __init__(self, name, sort, args, repr=None):
@@ -82,6 +93,12 @@ class Node:
     def __call__(self, *args):
         return AST(self, tuple(args))
 
+    def __setattr__(self, key, value):
+        if not hasattr(self, key):
+            super().__setattr__(key, value)
+        else:
+            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
+
 
 class AST(ABT):
     """An AST Node."""
@@ -89,8 +106,8 @@ class AST(ABT):
     def __init__(self, node: Node, args: tuple):
         if not isinstance(node, Node):
             raise TypeError("node is not of type Node.")
+        super().__init__(node.sort)
         self.node = node
-        self.sort = node.sort
         if len(args) != len(node.args):
             raise ValueError("Incorrect number of arguments.")
         if not all(map(lambda t: t[0].sort == t[1], zip(args, node.args))):
@@ -121,7 +138,7 @@ class AST(ABT):
 
 class Variable(ABT):
     def __init__(self, ident, sort, name=None):
-        self.sort = sort
+        super().__init__(sort)
         self.ident = ident
         self.name = str(ident) if name is None else str(name)
         self._hash = hash(self.sort) ^ hash(self.ident)
@@ -146,11 +163,11 @@ class Variable(ABT):
 class Bind(ABT):
     def __init__(self, var, expr: ABT):
         self._hash = 0
+        super().__init__(BindingSort(var.sort, expr.sort))
         self.bv = Variable(self, var.sort, var.name)
         self.expr = expr.substitute(var, self.bv)
-        self.sort = BindingSort(var.sort, expr.sort)
         self._FV = self.expr.FV() - {self.bv}
-        self._hash = hash(self.expr)  # TODO: Might this actually *be* alpha-invariant? Test!
+        object.__setattr__(self, "_hash", hash(self.expr))  # TODO: Might this actually *be* alpha-invariant? Test!
         self._repr = "(" + repr(self.bv) + ")." + repr(self.expr)
 
     def __repr__(self):

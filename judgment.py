@@ -1,6 +1,6 @@
 from abt import *
 from pattern import *
-
+#TODO make stuff immutable
 judgmentSort = PrimitiveSort("judgment")
 
 
@@ -31,10 +31,7 @@ class Derivation:
             raise ValueError("Inconsistent assignment of metavariables.")
         self.premises = prem
         self.conclusion = concl
-        self.assigment = subs
-
-    def __repr__(self):
-        return "???"  # TODO
+        self.assignment = subs
 
 
 class BidirectionalRule(InferenceRule):
@@ -43,10 +40,6 @@ class BidirectionalRule(InferenceRule):
         super().__init__(name, premises, conclusion)
         self.auto = auto
 
-
-if __name__ == "__main__":
-    # miu
-    pass
 
 
 if __name__ == "__main__":
