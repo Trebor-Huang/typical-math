@@ -1,12 +1,12 @@
 from abt import *
 from pattern import *
-#TODO make stuff immutable
-judgmentSort = PrimitiveSort("judgment")
 
 
 class JudgmentForm(Node):
+    judgmentSort = PrimitiveSort("judgment")
+
     def __init__(self, name, args, repr=None):
-        super().__init__(name, judgmentSort, args, repr)
+        super().__init__(name, self.judgmentSort, args, repr)
 
 
 class InferenceRule:
@@ -17,6 +17,12 @@ class InferenceRule:
 
     def __call__(self, pr, concl):
         return Derivation(self, pr, concl)
+
+    def __setattr__(self, key, value):
+        if not hasattr(self, key):
+            super().__setattr__(key, value)
+        else:
+            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
 
 
 class Derivation:
@@ -33,13 +39,35 @@ class Derivation:
         self.conclusion = concl
         self.assignment = subs
 
+    def __setattr__(self, key, value):
+        if not hasattr(self, key):
+            super().__setattr__(key, value)
+        else:
+            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
+
 
 class BidirectionalRule(InferenceRule):
-    def __init__(self, name, premises, conclusion, auto):  # TODO
-        """auto(...?)"""
-        super().__init__(name, premises, conclusion)
-        self.auto = auto
+    def __init__(self, name, premises, conclusion_in, conclusion_out, io_node):
+        # io_node is a Node with conclusion_in and conclusion_out as arguments.
+        # the conclusion_in's will be used as pattern to match against actual expressions
+        # when type checking, and the matched results substituted into premises'
+        # meta-variables, recursively generating the output.
 
+        # premises should be a list of bidirectional rules (check!)
+        self.conclusion_in = conclusion_in
+        self.conclusion_out = conclusion_out
+        super().__init__(name, premises, io_node(*conclusion_in, conclusion_out))
+
+    def generate(self, conclusion_in):
+        res = match(conclusion_in, self.conclusion_in)
+        # TODO
+
+
+    def __setattr__(self, key, value):
+        if not hasattr(self, key):
+            super().__setattr__(key, value)
+        else:
+            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
 
 
 if __name__ == "__main__":

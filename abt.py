@@ -3,6 +3,12 @@
 # TODO unification
 
 
+def substitute(expr, subs: dict):
+    for key in subs:
+        expr = expr.substitute(key, subs[key])
+    return expr
+
+
 class Sort:
     def __setattr__(self, key, value):
         if not hasattr(self, key):
