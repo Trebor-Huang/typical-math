@@ -29,21 +29,24 @@ class MetaVariable(ABT):
 
 
 def match(expr: ABT, pattern: ABT):
-    if expr.sort != pattern.sort:
-        raise ValueError("Sort mismatch.")
-    elif isinstance(pattern, MetaVariable):
-        return {pattern: expr}
-    elif type(expr) == type(pattern) == Variable:
-        return dict()
-    elif type(expr) == type(pattern) == AST:
-        if expr.node == pattern.node:
-            return merge_dicts(*map(match, expr.args, pattern.args))
+    try:
+        if expr.sort != pattern.sort:
+            raise ValueError("Sort mismatch.")
+        elif isinstance(pattern, MetaVariable):
+            return {pattern: expr}
+        elif type(expr) == type(pattern) == Variable:
+            return dict()
+        elif type(expr) == type(pattern) == AST:
+            if expr.node == pattern.node:
+                return merge_dicts(*map(match, expr.args, pattern.args))
+            else:
+                raise ValueError("Node mismatch.")
+        elif type(expr) == type(pattern) == Bind:
+            return match(expr.expr.substitute(expr.bv, pattern.bv), pattern.expr)
         else:
-            raise ValueError("Node mismatch.")
-    elif type(expr) == type(pattern) == Bind:
-        return match(expr.expr.substitute(expr.bv, pattern.bv), pattern.expr)
-    else:
-        raise ValueError("Node type mismatch.")
+            raise ValueError("Node type mismatch.")
+    except ValueError as e:
+        raise ValueError("Match failed: inconsistent.")
     
 
 if __name__ == "__main__":

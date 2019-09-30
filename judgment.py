@@ -18,11 +18,6 @@ class InferenceRule:
     def __call__(self, pr, concl):
         return Derivation(self, pr, concl)
 
-    def __setattr__(self, key, value):
-        if not hasattr(self, key):
-            super().__setattr__(key, value)
-        else:
-            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
 
 
 class Derivation:
@@ -46,40 +41,20 @@ class Derivation:
             raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
 
 
-class BidirectionalRule(InferenceRule):
-    def __init__(self, name, premises, conclusion_in, conclusion_out, io_node):
-        # io_node is a Node with conclusion_in and conclusion_out as arguments.
-        # the conclusion_in's will be used as pattern to match against actual expressions
-        # when type checking, and the matched results substituted into premises'
-        # meta-variables, recursively generating the output.
+    # TODO: inference rules
+    # ##### How automatic inference works ##### #
+    # We take the known parts in the judgment,
+    # and by unification with each inference rules
+    # we pick out the ones that result in a
+    # consistent unification, and, one-by-one, try
+    # to recursively find the expression to fill
+    # in the metavariables in the premises. We
+    # take the first successful one, and fill in
+    # the unknown parts of the conclusion with the
+    # now-known knowledge.
 
-        # premises should be a list of bidirectional rules (check!)
-        self.conclusion_in = conclusion_in
-        self.conclusion_out = conclusion_out
-        super().__init__(name, premises, io_node(*conclusion_in, conclusion_out))
-
-    def generate(self, conclusion_in):
-        res = match(conclusion_in, self.conclusion_in)
-        # TODO
-
-
-    def __setattr__(self, key, value):
-        if not hasattr(self, key):
-            super().__setattr__(key, value)
-        else:
-            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
+    # We do *NOT* need explicit marking of inputs and outputs.
 
 
 if __name__ == "__main__":
-    expr = PrimitiveSort("expr")
-    Zero = Node("0", expr, (), lambda _: "0")()
-    Succ = Node("S", expr, (expr,))
-    isNat = JudgmentForm("NAT", (expr,), lambda m: f"{str(m[1])} nat")
-
-    n = MetaVariable("n", expr)
-
-    Onat = InferenceRule("Onat", (), isNat(Zero))
-    Snat = InferenceRule("Snat", (isNat(n),), isNat(Succ(n)))
-
-    ZeroIsNat = Derivation(Onat, (), isNat(Zero))
-    OneIsNat = Derivation(Snat, (ZeroIsNat,), isNat(Succ(Zero)))
+    pass

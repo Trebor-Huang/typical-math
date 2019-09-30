@@ -10,11 +10,15 @@ def substitute(expr, subs: dict):
 
 
 class Sort:
+    pass
+
+    """
     def __setattr__(self, key, value):
         if not hasattr(self, key):
             super().__setattr__(key, value)
         else:
             raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
+    """
 
     def __repr__(self):
         return "Sort"
