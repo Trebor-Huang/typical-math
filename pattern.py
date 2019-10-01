@@ -47,7 +47,63 @@ def match(expr: ABT, pattern: ABT):
             raise ValueError("Node type mismatch.")
     except ValueError as e:
         raise ValueError("Match failed: inconsistent.")
-    
+
+
+def unify(constraints, verbose=False):
+    """Unification of metavariables."""
+    solutions = []
+    while constraints:
+        c = constraints.pop()
+        if verbose:
+            print("Current Equations State:\n" + "\n".join([str(e) for e in constraints])
+                  + "\n+++++++++++++++++++\n" + str(c) + "\n")
+        if c[0] == c[1]:  # DELETE
+            pass
+        elif isinstance(c[0], AST) and isinstance(c[1], AST):
+            if c[0].node == c[1].node:  # DECOMPOSE
+                constraints.extend(zip(c[0].args, c[1].args))
+            else:  # CONFLICT
+                raise ValueError("Unification failed: conflict.")
+        elif isinstance(c[0], Bind) and isinstance(c[1], Bind):  # DECOMPOSE-Alt
+            constraints.append((c[0].expr, c[1].expr.substitute(c[1].bv, c[0].bv)))
+        elif isinstance(c[0], ABT) and isinstance(c[1], MetaVariable):  # SWAP
+            constraints.append((c[1], c[0]))
+        elif isinstance(c[1], ABT) and isinstance(c[0], MetaVariable):
+            if c[0] not in get_metavariables(c[1]):  # ELIMINATE
+                constraints = [(subs_metavariables(cnl, {c[0]: c[1]}),
+                                subs_metavariables(cnr, {c[0]: c[1]})) for cnl, cnr in constraints]
+                solutions = [(subs_metavariables(sll, {c[0]: c[1]}),
+                              subs_metavariables(slr, {c[0]: c[1]})) for sll, slr in solutions]
+                # constraints.insert(0, c)
+                solutions.append(c)
+            else:  # OCCURS CHECK
+                raise ValueError("Unification failed: occurs check.")
+        else:  # OTHER, must be conflict since c[0] != c[1]
+            raise ValueError("Unification failed: conflict.")
+    return {p: q for p, q in solutions}
+
+
+def get_metavariables(expr: ABT):
+    if isinstance(expr, MetaVariable):
+        return {expr: expr.sort}
+    elif isinstance(expr, AST):
+        return merge_dicts(*(get_metavariables(c) for c in expr.args))
+    elif isinstance(expr, Bind):
+        return get_metavariables(expr.expr)
+    else:
+        return dict()
+
+
+def subs_metavariables(expr:ABT, ass:dict):
+    if isinstance(expr, MetaVariable) and expr in ass:
+        return ass[expr]
+    elif isinstance(expr, AST):
+        return expr.node(*(subs_metavariables(a, ass) for a in expr.args))
+    elif isinstance(expr, Bind):
+        return Bind(expr.bv, subs_metavariables(expr.expr, ass))
+    else:
+        return expr
+
 
 if __name__ == "__main__":
     wff = PrimitiveSort("wff")
@@ -71,5 +127,11 @@ if __name__ == "__main__":
     print(xe0_i_xp0e0.sort, phi_i_Tp0e0.sort)
 
     print(match(xe0_i_xp0e0, phi_i_Tp0e0))
-    match(xe0_i_xp0e0, phi_i_TpTe0)
+    print(unify([(xe0_i_xp0e0, phi_i_Tp0e0)]))
+    try:
+        print(unify([(xe0_i_xp0e0, phi_i_TpTe0)], True))
+    except ValueError as v:
+        print("Failed!")
+
+    print(get_metavariables(phi_i_Tp0e0))
 

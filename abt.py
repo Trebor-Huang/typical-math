@@ -90,6 +90,7 @@ class ABT:
 
 
 class Node:
+    """Class Node records the type of ABT nodes."""
     def __init__(self, name, sort, args, repr=None):
         self.sort = sort
         self.name = name
@@ -102,12 +103,13 @@ class Node:
 
     def __call__(self, *args):
         return AST(self, tuple(args))
-
+    """
     def __setattr__(self, key, value):
         if not hasattr(self, key):
             super().__setattr__(key, value)
         else:
             raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
+    """
 
 
 class AST(ABT):
@@ -177,7 +179,7 @@ class Bind(ABT):
         self.bv = Variable(self, var.sort, var.name)
         self.expr = expr.substitute(var, self.bv)
         self._FV = self.expr.FV() - {self.bv}
-        object.__setattr__(self, "_hash", hash(self.expr))  # TODO: Might this actually *be* alpha-invariant? Test!
+        object.__setattr__(self, "_hash", hash(self.expr))  # This is actually alpha-invariant! congrats!
         self._repr = "(" + repr(self.bv) + ")." + repr(self.expr)
 
     def __repr__(self):
