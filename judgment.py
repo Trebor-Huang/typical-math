@@ -19,6 +19,9 @@ class InferenceRule:
     def __call__(self, pr, concl):
         return Derivation(self, pr, concl)
 
+    def __repr__(self):
+        return self.name
+
 
 class Derivation:
     def __init__(self, rule: InferenceRule, prem, concl: ABT):
@@ -34,13 +37,29 @@ class Derivation:
         self.conclusion = concl
         self.assignment = subs
 
-    """
-    def __setattr__(self, key, value):
-        if not hasattr(self, key):
-            super().__setattr__(key, value)
+    def __repr__(self):
+        return "Derivation of %s" % repr(self.conclusion)
+
+    def _pretty(self):
+        if len(self.premises) == 0:
+            a = ['']
+            width = 0
         else:
-            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
-    """
+            derivstrs = [p._pretty() for p in self.premises]
+            derivlens = list(map(lambda l: len(l[0]), derivstrs))
+            a = []
+            while not all(len(i) == 0 for i in derivstrs):
+                a.insert(0, '  '.join(i.pop() if len(i) != 0 else " " * derivlens[n]
+                                      for n, i in enumerate(derivstrs)))
+            width = len(a[-1])
+        concl = repr(self.conclusion)
+        wc = len(concl)
+        total_width = max(width, wc) + 2
+        return [ai.center(total_width, ' ') for ai in a] + \
+               ['-' * total_width] + [concl.center(total_width, ' ')]
+
+    def pretty(self):
+        return '\n'.join(self._pretty())
 
     # ##### How automatic inference works ##### #
     # We take the known parts in the judgment,
@@ -81,20 +100,3 @@ def infer(judgment, rules):
             continue
     # by now no rules apply, so fail
     return None
-
-
-if __name__ == "__main__":
-    expr = PrimitiveSort("expr")
-    Zero = Node("0", expr, (), lambda _: "0")()
-    Succ = Node("S", expr, (expr,))
-    isNat = JudgmentForm("NAT", (expr,), lambda m: f"{str(m[1])} nat")
-
-    n = MetaVariable("n", expr)
-
-    Onat = InferenceRule("Onat", (), isNat(Zero))
-    Snat = InferenceRule("Snat", (isNat(n),), isNat(Succ(n)))
-    # We build derivation trees by hand.
-    ZeroIsNat = Derivation(Onat, (), isNat(Zero))
-    OneIsNat = Derivation(Snat, (ZeroIsNat,), isNat(Succ(Zero)))
-
-    OneIsNat_auto = infer(isNat(Succ(Zero)), [Onat, Snat])
