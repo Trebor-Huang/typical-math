@@ -10,11 +10,15 @@ class JudgmentForm(Node):
 
 
 class InferenceRule:
-    def __init__(self, name, premises, conclusion):
+    def __init__(self, name, premises, conclusion, condition=None):
+        # condition is additional conditions that may be present.
+        # This should be a function accepting a dict
         self.name = name
         self.premises = tuple(premises)
         self.conclusion = conclusion
         self.variables = merge_dicts(get_metavariables(conclusion), *map(get_metavariables, premises))
+        self.condition = condition \
+            if condition is not None else lambda *_: True
 
     def __call__(self, pr, concl):
         return Derivation(self, pr, concl)
@@ -93,6 +97,9 @@ def infer(judgment, rules):
                 # or this?? : any(isinstance(e, MetaVariable) for e in full_assignment.items()):
                 print(conclusion)
                 # print("[INFER] Unable to fully infer all unknowns.")
+                continue
+            # at last.. check the additional conditions
+            if not rule.condition({v : full_assignment[v] for v in rule.variables}):
                 continue
             return rule(tuple(p for p, a in prem_deriv), conclusion), \
                    {k: full_assignment[k] for k in get_metavariables(judgment)}
