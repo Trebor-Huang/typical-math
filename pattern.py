@@ -16,7 +16,7 @@ class MetaVariable(ABT):
     def __init__(self, name, sort):
         self.name = str(name)
         self.sort = sort
-        self._hash = hash(self.name) ^ hash(self.sort)
+        self._hash = hash(self.name) ^ hash(self.sort) ^ id(self)
 
     def __repr__(self):
         return self.name
@@ -26,6 +26,11 @@ class MetaVariable(ABT):
 
     def FV(self):
         return set()
+
+    def substitute(self, var, expr):
+        if self is var:
+            return expr
+        return self
 
 
 def match(expr: ABT, pattern: ABT):

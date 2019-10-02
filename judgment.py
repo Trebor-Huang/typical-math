@@ -18,13 +18,21 @@ class InferenceRule:
         self.conclusion = conclusion
         self.variables = merge_dicts(get_metavariables(conclusion), *map(get_metavariables, premises))
         self.condition = condition \
-            if condition is not None else lambda *_: True
+            if condition is not None else lambda d: True
 
     def __call__(self, pr, concl):
         return Derivation(self, pr, concl)
 
     def __repr__(self):
         return self.name
+
+    def with_fresh_metavariables(self):
+        fresh_juice_raw = [(v, MetaVariable("f" + v.name, v.sort)) for v in self.variables]
+        fresh_juice = {a: b for a,b in fresh_juice_raw}
+        fresh_juice_inverted = {b: a for a,b in fresh_juice_raw}
+        return InferenceRule(self.name, tuple(subs_metavariables(p, fresh_juice) for p in self.premises),
+                             subs_metavariables(self.conclusion, fresh_juice),
+                             lambda d: self.condition({fresh_juice_inverted[k]: d[k] for k in d}))
 
 
 class Derivation:
@@ -82,6 +90,7 @@ class Derivation:
 def infer(judgment, rules):
     print("[INFER] Inferring %s." % repr(judgment))
     for rule in rules:  # try each rule
+        rule = rule.with_fresh_metavariables()
         print("[INFER] Trying rule %s." % rule)
         try:
             assignment = unify([(judgment, rule.conclusion)])  # if one rule matches
