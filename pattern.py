@@ -51,6 +51,7 @@ def match(expr: ABT, pattern: ABT):
 
 def unify(constraints, verbose=False):
     """Unification of metavariables."""
+    print("[UNIFY]", constraints)
     solutions = []
     while constraints:
         c = constraints.pop()
@@ -66,8 +67,8 @@ def unify(constraints, verbose=False):
                 raise ValueError("Unification failed: conflict.")
         elif isinstance(c[0], Bind) and isinstance(c[1], Bind):  # DECOMPOSE-Alt
             constraints.append((c[0].expr, c[1].expr.substitute(c[1].bv, c[0].bv)))
-        elif isinstance(c[0], ABT) and isinstance(c[1], MetaVariable):  # SWAP
-            constraints.append((c[1], c[0]))
+        elif isinstance(c[0], ABT) and isinstance(c[1], MetaVariable) and not isinstance(c[0], MetaVariable):  # SWAP
+            constraints.insert(0, (c[1], c[0]))
         elif isinstance(c[1], ABT) and isinstance(c[0], MetaVariable):
             if c[0] not in get_metavariables(c[1]):  # ELIMINATE
                 constraints = [(subs_metavariables(cnl, {c[0]: c[1]}),

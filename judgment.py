@@ -80,30 +80,43 @@ class Derivation:
 
 
 def infer(judgment, rules):
+    print("[INFER] Inferring %s." % repr(judgment))
     for rule in rules:  # try each rule
+        print("[INFER] Trying rule %s." % rule)
         try:
             assignment = unify([(judgment, rule.conclusion)])  # if one rule matches
-            prem_deriv = [infer(subs_metavariables(p, assignment), rules) for p in rule.premises]  # fulfill premises
-            if None in prem_deriv:  # fails
-                continue
-            # Succeeded. We collect the derivation tree and assignments
-            try:
-                full_assignment = merge_dicts(assignment, *(a for d, a in prem_deriv))
-            except ValueError as v:
-                # print("[INFER] Merge conflict.")  # Debug; need to remove this
-                continue  # merge conflict
-            conclusion = subs_metavariables(judgment, full_assignment)
+            prem_deriv = []  # fulfill premises
+            alright = True
+            for p in rule.premises:
+                da = infer(subs_metavariables(p, assignment), rules)
+                if da is None:  # fails
+                    alright = False
+                    break
+                d, a = da
+                prem_deriv.append(d)
+                # Succeeded. We collect the derivation tree and assignments
+                try:
+                    assignment = merge_dicts(assignment, a)
+                except ValueError as v:
+                    # print("[INFER] Merge conflict.")  # Debug; need to remove this
+                    alright = False
+                    break  # merge conflict
+            if not alright: continue
+            conclusion = subs_metavariables(judgment, assignment)
             if get_metavariables(conclusion) != dict():
                 # or this?? : any(isinstance(e, MetaVariable) for e in full_assignment.items()):
-                print(conclusion)
-                # print("[INFER] Unable to fully infer all unknowns.")
+                print("[INFER]", conclusion)
+                print("[INFER]   Unable to fully infer all unknowns.")
+                print("[INFER]   Inferring %s." % judgment)
+                print("[INFER]   Using rule %s." % rule)
                 continue
             # at last.. check the additional conditions
-            if not rule.condition({v : full_assignment[v] for v in rule.variables}):
+            if not rule.condition({v : assignment[v] for v in rule.variables}):
                 continue
-            return rule(tuple(p for p, a in prem_deriv), conclusion), \
-                   {k: full_assignment[k] for k in get_metavariables(judgment)}
+            return rule(tuple(prem_deriv), conclusion), \
+                   {k: assignment[k] for k in get_metavariables(judgment)}
         except ValueError as v:
             continue
     # by now no rules apply, so fail
+    print("[INFER] Failed inferring %s." % judgment)
     return None

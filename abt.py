@@ -173,14 +173,14 @@ class Variable(ABT):
 
 
 class Bind(ABT):
-    def __init__(self, var, expr: ABT):
+    def __init__(self, var: Variable, expr: ABT):
         self._hash = 0
         super().__init__(BindingSort(var.sort, expr.sort))
         self.bv = Variable(self, var.sort, var.name)
         self.expr = expr.substitute(var, self.bv)
         self._FV = self.expr.FV() - {self.bv}
         object.__setattr__(self, "_hash", hash(self.expr))  # This is actually alpha-invariant! congrats!
-        self._repr = "(" + repr(self.bv) + ")." + repr(self.expr)
+        self._repr = repr(self.bv) + "." + repr(self.expr)
 
     def __repr__(self):
         return self._repr
@@ -191,7 +191,7 @@ class Bind(ABT):
     def substitute(self, var, expr):
         if var == self.bv:
             raise ValueError("Name collision (normally will not happen unless you jinx stuff).")
-        return Bind(self.bv, expr.substitute(var, expr))
+        return Bind(self.bv, self.expr.substitute(var, expr))
 
     def __eq__(self, other):
         return isinstance(other, Bind) and self.expr == other.expr.substitute(other.bv, self.bv)
