@@ -1,6 +1,5 @@
 # For abstract syntax trees and abstract binding trees.
-# from functools import lru_cache
-# TODO unification
+# TODO The FV stuff seems useless, but I fear it will be used someday...
 
 
 def substitute(expr, subs: dict):
@@ -10,16 +9,6 @@ def substitute(expr, subs: dict):
 
 
 class Sort:
-    pass
-
-    """
-    def __setattr__(self, key, value):
-        if not hasattr(self, key):
-            super().__setattr__(key, value)
-        else:
-            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
-    """
-
     def __repr__(self):
         return "Sort"
 
@@ -64,7 +53,7 @@ class BindingSort(Sort):
 
 
 class ABT:
-    def __init__(self, sort):  # TODO refactoring so that this method assigns common attributes
+    def __init__(self, sort):
         self.sort = sort
 
     def __repr__(self):
@@ -82,12 +71,6 @@ class ABT:
     def FV(self):
         return set()
 
-    def __setattr__(self, key, value):
-        if not hasattr(self, key):
-            super().__setattr__(key, value)
-        else:
-            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
-
 
 class Node:
     """Class Node records the type of ABT nodes."""
@@ -103,13 +86,6 @@ class Node:
 
     def __call__(self, *args):
         return AST(self, tuple(args))
-    """
-    def __setattr__(self, key, value):
-        if not hasattr(self, key):
-            super().__setattr__(key, value)
-        else:
-            raise RuntimeError("Can't modify immutable object's attribute: {}".format(key))
-    """
 
 
 class AST(ABT):

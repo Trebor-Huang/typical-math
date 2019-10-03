@@ -13,24 +13,32 @@ def merge_dicts(*res):
 
 
 class MetaVariable(ABT):
-    def __init__(self, name, sort):
-        self.name = str(name)
+    def __init__(self, ident, sort, closure=None, name=None):
+        self.name = str(ident) if name is None else name
+        self.ident = ident
         self.sort = sort
-        self._hash = hash(self.name) ^ hash(self.sort) ^ id(self)
+        self.closure = closure if closure is not None else ()
+        self._hash = hash(self.name) ^ hash(self.sort) ^ hash(self.closure) ^ hash(ident)
 
     def __repr__(self):
-        return self.name
+        return self.name + ("" if self.closure == () else
+                            "[%s]" % "; ".join(repr(v) + ":" + repr(e) for v, e in self.closure))
 
     def __hash__(self):
         return self._hash
 
     def FV(self):
+        # print("[METAV] Dammit, a metavariable is asked for FV's!")
         return set()
 
     def substitute(self, var, expr):
-        if self is var:
+        if var is self:
             return expr
-        return self
+        return MetaVariable(self.ident, self.sort, (*self.closure, (var, expr)), self.name)
+
+    def __eq__(self, other):
+        return isinstance(other, MetaVariable) and self.ident == other.ident and self.sort == other.sort and \
+               self.closure == other.closure and self.name == other.name
 
 
 def match(expr: ABT, pattern: ABT):
@@ -72,10 +80,15 @@ def unify(constraints, verbose=False):
                 raise ValueError("Unification failed: conflict.")
         elif isinstance(c[0], Bind) and isinstance(c[1], Bind):  # DECOMPOSE-Alt
             constraints.append((c[0].expr, c[1].expr.substitute(c[1].bv, c[0].bv)))
-        elif isinstance(c[0], ABT) and isinstance(c[1], MetaVariable) and not isinstance(c[0], MetaVariable):  # SWAP
+        elif isinstance(c[0], ABT) and isinstance(c[1], MetaVariable) and \
+                (not isinstance(c[0], MetaVariable) or (isinstance(c[0], MetaVariable) and
+                                                        c[0].closure != () and c[1].closure == ())):  # SWAP
             constraints.insert(0, (c[1], c[0]))
         elif isinstance(c[1], ABT) and isinstance(c[0], MetaVariable):
             if c[0] not in get_metavariables(c[1]):  # ELIMINATE
+                if c[0].closure != ():
+                    print("[UNIFY] metavar with closure!", c)
+                    # TODO: raise error?
                 constraints = [(subs_metavariables(cnl, {c[0]: c[1]}),
                                 subs_metavariables(cnr, {c[0]: c[1]})) for cnl, cnr in constraints]
                 solutions = [(subs_metavariables(sll, {c[0]: c[1]}),
@@ -100,9 +113,17 @@ def get_metavariables(expr: ABT):
         return dict()
 
 
-def subs_metavariables(expr:ABT, ass:dict):
-    if isinstance(expr, MetaVariable) and expr in ass:
-        return ass[expr]
+def subs_metavariables(expr: ABT, ass: dict):  # The key of ass should be closure-free metavars..?
+    if isinstance(expr, MetaVariable):
+        for v in ass:
+            if expr.ident == v.ident and expr.sort == v.sort and expr.name == v.name:
+                if v.closure != ():
+                    print("[METAV] Closure related error.")
+                er = ass[v]
+                for vv, ee in expr.closure:
+                    er = er.substitute(vv, ee)
+                return er
+        return expr
     elif isinstance(expr, AST):
         return expr.node(*(subs_metavariables(a, ass) for a in expr.args))
     elif isinstance(expr, Bind):
@@ -140,4 +161,3 @@ if __name__ == "__main__":
         print("Failed!")
 
     print(get_metavariables(phi_i_Tp0e0))
-
