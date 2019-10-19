@@ -1,4 +1,4 @@
-from judgment import *
+from python.judgment import *
 
 print("##### TEST I #####")
 expr = PrimitiveSort("expr")

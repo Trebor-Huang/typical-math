@@ -1,5 +1,4 @@
-from abt import *
-from pattern import *
+from python.pattern import *
 
 
 class JudgmentForm(Node):

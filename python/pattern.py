@@ -1,4 +1,4 @@
-from abt import *
+from python.abt import *
 
 
 def merge_dicts(*res):

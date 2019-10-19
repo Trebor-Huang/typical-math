@@ -7,7 +7,11 @@ An implementation of a type theory and proof checker.
 
 ## Parsing system
 
-## Miscellanous Components
+## [Deprecated] Python
+
+This part contains python code that I abandoned :(
+
+## Miscellaneous Components
 
 This part is stored in the `/Misc` directory. It contains the
 code used for demonstration purposes in the column.
