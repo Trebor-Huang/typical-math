@@ -11,7 +11,7 @@ instance Show ABT where  -- TODO Pretty print
     show (Bind e)          = '.' : show e
     show (MetaVar s c)     = '%' : show s ++ show c
 
-data Substitution = Shift Int | Dot ABT Substitution
+data Substitution = Shift Int | Dot ABT Substitution deriving (Eq)
 
 instance Show Substitution where
     show (Shift k)      = '^' : show k
@@ -36,5 +36,5 @@ substitute (MetaVar n c)    s = MetaVar n (compose s c)
 
 beta :: ABT -> ABT -> ABT
 -- aux function for Bind's beta reduction
-beta (Bind e1) e2   = substitute e1 ([e2], [])
+beta (Bind e1) e2   = substitute e1 (Dot e2 (Shift 0))
 beta _         _    = error "beta is for Bind only."
