@@ -1,34 +1,37 @@
 module ABT where
 
-data ABT = Var Int | FVar String | Node String [ABT] | Bind ABT deriving (Eq)
+type VarName = Int
+data ABT = Var VarName | Node String [ABT] | Bind ABT | MetaVar String Substitution deriving (Eq)
 -- Uses De Bruijn Indices
 -- !Starting from 0
 
 instance Show ABT where  -- TODO Pretty print
- show (Var n)           = show n
- show (FVar s)          = s
- show (Node name abts)  = '(' : name ++ foldl (++) "" (map ((' ':) . show) abts) ++ ")"
- show (Bind e)          = '.' : show e
+    show (Var n)           = show n
+    show (Node name abts)  = '(' : name ++ foldl (++) "" (map ((' ':) . show) abts) ++ ")"
+    show (Bind e)          = '.' : show e
+    show (MetaVar s c)     = '%' : show s ++ show c
 
-bind :: String -> ABT -> ABT
-bind s e = Bind (substitute (e `shift` 1) ([], [(s, Var 0)]))
+data Substitution = Shift Int | Dot ABT Substitution
 
-shift :: ABT -> Int -> ABT
-shift (Var n)           k   = Var (n+k)
-shift f@(FVar s)        k   = f
-shift (Node name abts)  k   = Node name (map (`shift` k) abts)
-shift (Bind e)          k   = Bind (substitute e (Var 0 : map Var [(k+1)..], []))
+instance Show Substitution where
+    show (Shift k)      = '^' : show k
+    show (Dot e s)      = show e ++ " . " ++ show s
 
-substitute :: ABT -> ([ABT], [(String, ABT)])  -> ABT
--- Substitution is a (potentially infinite) list of substitutions; with free variable substitutions
--- One for each de Bruijn index
+compose :: Substitution -> Substitution -> Substitution
+compose s           (Shift 0) = s
+compose (Dot e s)   (Shift k) = compose s (Shift (k-1))
+compose (Shift m)   (Shift n) = Shift (m+n)
+compose s           (Dot e t) = Dot (substitute e s) (compose s t)
 
-substitute v@(Var n)        (subs, fsubs)    = if length subs > n then subs !! n else v
-substitute (Node name abts) (subs, fsubs)    = Node name (map (`substitute` (subs, fsubs)) abts)
-substitute (Bind e)         (subs, fsubs)    = Bind (substitute e (((Var 0) : (map (`shift` 1) subs)), fsubs))
-substitute f@(FVar s)       (subs, fsubs)    = case (lookup s fsubs) of
-                                                Just expr   -> expr
-                                                Nothing     -> f
+substitute :: ABT -> Substitution -> ABT
+
+substitute (Var m)  (Shift k) = Var (k+m)
+substitute (Var 0)  (Dot e s) = e
+substitute (Var k)  (Dot e s) = substitute (Var (k-1)) s
+substitute (Bind e) s         = Bind (substitute e (Dot (Var 0) (compose (Shift 1) s)))
+substitute (Node name abts) s = Node name (map (`substitute` s) abts)
+substitute (MetaVar n c)    s = MetaVar n (compose s c)
+
 -- We seriously need to check if there is any bug
 
 beta :: ABT -> ABT -> ABT
