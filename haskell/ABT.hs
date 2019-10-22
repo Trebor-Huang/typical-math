@@ -1,15 +1,17 @@
-module ABT where
+module ABT(VarName, NodeType, ABT(..), Substitution, compose, substitute, beta) where
 
 type VarName = Int
-data ABT = Var VarName | Node String [ABT] | Bind ABT | MetaVar String Substitution deriving (Eq)
--- Uses De Bruijn Indices
--- !Starting from 0
+type NodeType = String
+data ABT = Var VarName | Node NodeType [ABT] | Bind ABT | MetaVar String Substitution deriving (Eq)
+-- Uses De Bruijn Indices starting from zero; therefore we can just derive the Eq class
+
+-- TODO See if the String param in Node should be replaced with a record type of Node types
 
 instance Show ABT where  -- TODO Pretty print
     show (Var n)           = show n
     show (Node name abts)  = '(' : name ++ foldl (++) "" (map ((' ':) . show) abts) ++ ")"
     show (Bind e)          = '.' : show e
-    show (MetaVar s c)     = '%' : show s ++ show c
+    show (MetaVar s c)     = '%' : s ++ '[' : show c ++ "]"
 
 data Substitution = Shift Int | Dot ABT Substitution deriving (Eq)
 
