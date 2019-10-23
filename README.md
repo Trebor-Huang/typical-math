@@ -1,5 +1,5 @@
 # TypicalMath
-An implementation of a type theory and proof checker.
+A **general-purpose** type theory and proof checker **implementer**. By specifying the derivation rules, this tool can act as a type checker for the type system.
  The supporting theory is introduced in 
  [this column (Chinese)](https://zhuanlan.zhihu.com/typical-math).
 
