@@ -1,5 +1,5 @@
 # TypicalMath
-An implementation of a type theory and proof checker.
+A **general-purpose** type theory and proof checker **implementer**. By specifying the derivation rules, this tool can act as a type checker for the type system.
  The supporting theory is introduced in 
  [this column (Chinese)](https://zhuanlan.zhihu.com/typical-math).
 
@@ -7,7 +7,11 @@ An implementation of a type theory and proof checker.
 
 ## Parsing system
 
-## Miscellanous Components
+## [Deprecated] Python
+
+This part contains python code that I abandoned :(
+
+## Miscellaneous Components
 
 This part is stored in the `/Misc` directory. It contains the
 code used for demonstration purposes in the column.

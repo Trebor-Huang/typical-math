@@ -1,4 +1,4 @@
-from judgment import *
+from python.judgment import *
 
 print("##### TEST I #####")
 expr = PrimitiveSort("expr")
@@ -49,9 +49,9 @@ To = Node("->", expr, (expr, expr), lambda t: "(%s -> %s)" % t[1:])
 
 # Trivial = Node("*", expr, ())()
 type_stmt = PrimitiveSort("type_stmt")
-x = MetaVariable("x", expr)  # TODO: a fatal error: when metavariables become bound, they can no longer be matched!!!
-y = MetaVariable("y", expr)  # TODO: solution: substitution should get stuck on metavariables!!!
-z = MetaVariable("z", expr)
+x = MetaVariable("x", expr)  # a fatal error: when metavariables become bound, they can no longer be matched!!!
+y = MetaVariable("y", expr)  # solution: substitution should get stuck on metavariables!!!
+z = MetaVariable("z", expr)  # this is mentioned in the little typer book as CLOSURES!!!!!!! How could I've missed it?
 a = Variable("a", expr)
 b = Variable("b", expr)
 c = Variable("c", expr)

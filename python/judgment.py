@@ -1,5 +1,4 @@
-from abt import *
-from pattern import *
+from python.pattern import *
 
 
 class JudgmentForm(Node):
@@ -27,7 +26,7 @@ class InferenceRule:
         return self.name
 
     def with_fresh_metavariables(self):
-        fresh_juice_raw = [(v, MetaVariable("f" + v.name, v.sort)) for v in self.variables]
+        fresh_juice_raw = [(v, MetaVariable((v.ident,), v.sort, v.closure, "f" + v.name)) for v in self.variables]
         fresh_juice = {a: b for a,b in fresh_juice_raw}
         fresh_juice_inverted = {b: a for a,b in fresh_juice_raw}
         return InferenceRule(self.name, tuple(subs_metavariables(p, fresh_juice) for p in self.premises),
@@ -84,9 +83,11 @@ class Derivation:
     # the unknown parts of the conclusion with the
     # now-known knowledge.
 
-    # We do *NOT* need explicit marking of inputs and outputs.
+    # We *DO* need explicit marking of inputs and outputs!
+    # TODO: marking that makes unification unecessary.
+    # TODO: we can't sort out all the mess unify makes..
 
-
+"""
 def infer(judgment, rules):
     print("[INFER] Inferring %s." % repr(judgment))
     for rule in rules:  # try each rule
@@ -129,3 +130,4 @@ def infer(judgment, rules):
     # by now no rules apply, so fail
     print("[INFER] Failed inferring %s." % judgment)
     return None
+"""
