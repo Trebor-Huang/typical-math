@@ -11,7 +11,7 @@ instance Show ABT where  -- TODO Pretty print
     show (Var n)           = show n
     show (Node name abts)  = '(' : name ++ foldl (++) "" (map ((' ':) . show) abts) ++ ")"
     show (Bind e)          = '.' : show e
-    show (MetaVar s c)     = '%' : s ++ '[' : show c ++ "]"
+    show (MetaVar s c)     = '?' : s ++ '[' : show c ++ "]"
 
 data Substitution = Shift Int | Dot ABT Substitution deriving (Eq)
 
@@ -40,3 +40,6 @@ beta :: ABT -> ABT -> ABT
 -- aux function for Bind's beta reduction
 beta (Bind e1) e2   = substitute e1 (Dot e2 (Shift 0))
 beta _         _    = error "beta is for Bind only."
+
+metaSubstitute :: ABT -> [(ABT, ABT)] -> Maybe ABT
+-- TODO
