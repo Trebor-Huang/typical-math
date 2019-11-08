@@ -5,6 +5,22 @@ A **general-purpose** type theory and proof checker **implementer**. By specifyi
 
 ## Type system
 
+Since this project aims for a *general-purpose* *implementer*, we have a way of specifying a set of bidirectional derivation rules. In mathematical notation, they are of the form:
+
+```
+ J1 J2 J3 ...
+-------------- Rule-Name
+      J
+```
+
+Where each judgment `J` is of the form
+
+```
+Gamma |- In-expr ~> Out-expr
+```
+
+
+
 ## Parsing system
 
 ## [Deprecated] Python
