@@ -1,4 +1,4 @@
-module ABT(VarName, NodeType, ABT(..), Substitution, compose, substitute, beta) where
+module ABT(VarName, NodeType, ABT(..), Substitution, compose, substitute, beta, metaSubstitute) where
 
 type VarName = Int
 type NodeType = String
