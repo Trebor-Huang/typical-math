@@ -2,7 +2,7 @@ module ABT
   ( VarName
   , NodeType
   , ABT(..)
-  , Substitution
+  , Substitution(..)
   , compose
   , substitute
   , beta
