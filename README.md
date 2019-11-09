@@ -19,18 +19,22 @@ Where each judgment `J` is of the form
 Gamma |- In-expr ~> Out-expr
 ```
 
-
+The program runs the classic bidirectioal type-checking technique:
+it first **matches** the judgment to be derived with the conclusions of the rules *in order*,
+and after the first match, it tries to derive all the premises, with a monadic structure
+recording the meta-variable assignment and log data.
 
 ## Parsing system
 
 ## [Deprecated] Python
 
+Under the `python-archive` tag.
 This part contains python code that I abandoned :(
 
 ## Miscellaneous Components
 
-This part is stored in the `/Misc` directory. It contains the
-code used for demonstration purposes in the column.
+This part is stored in the `/Misc` directory under the `python-archive` tag.
+It contains the code used for demonstration purposes in the column.
 
 The `/Misc/LambdaCalculus` folder contains an implementation of
 simply typed and untyped lambda calculus. It also contains a
