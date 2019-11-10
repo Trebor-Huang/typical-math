@@ -4,6 +4,7 @@ module Utilities
   ) where
 
 import           Control.Monad (foldM, join, liftM2, mapM)
+import           ABT (MetaName, ABT, metaSubstitute)
 
 -- utilities
 mergeAssoc ::
@@ -29,3 +30,7 @@ mergeAssoc ((k, v):as) assoc =
 
 mergeAssocs :: (Eq key, Eq value) => [[(key, value)]] -> Maybe [(key, value)]
 mergeAssocs asss = join $ foldM (liftM2 mergeAssoc) (Just []) (map Just asss)
+
+substituteEqs :: [(ABT, ABT)] -> [(MetaName, ABT)] -> [(ABT, ABT)]
+substituteEqs eqs subs =
+  map (\(e1, e2) -> (metaSubstitute e1 subs, metaSubstitute e2 subs)) eqs

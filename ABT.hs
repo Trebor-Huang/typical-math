@@ -1,5 +1,6 @@
 module ABT
   ( VarName
+  , MetaName
   , NodeType
   , ABT(..)
   , Substitution(..)
@@ -13,11 +14,13 @@ type VarName = Int
 
 type NodeType = String
 
+type MetaName = (String, Int)
+
 data ABT
   = Var VarName
   | Node NodeType [ABT]
   | Bind ABT
-  | MetaVar String Substitution
+  | MetaVar MetaName Substitution
   deriving (Eq)
 
 -- Uses De Bruijn Indices starting from zero; therefore we can just derive the Eq class
@@ -27,7 +30,7 @@ instance Show ABT where
   show (Var n)          = show n
   show (Node name abts) = '(' : name ++ concatMap ((' ' :) . show) abts ++ ")"
   show (Bind e)         = '.' : show e
-  show (MetaVar s c)    = '?' : s ++ '[' : show c ++ "]"
+  show (MetaVar s c)    = '?' : (show s) ++ '[' : show c ++ "]"
 
 data Substitution
   = Shift Int
@@ -56,15 +59,13 @@ substitute (MetaVar n c) s = MetaVar n (compose s c)
 beta :: ABT -> ABT -> ABT
 -- aux function for Bind's beta reduction
 beta (Bind e1) e2 = substitute e1 (Dot e2 (Shift 0))
-beta _ _          = error "beta is for Bind only."
+beta _         _  = error "beta is for Bind only."
 
--- data ABT = Var VarName | Node NodeType [ABT] | Bind ABT | MetaVar String Substitution deriving (Eq)
-metaSubstitute :: ABT -> [(String, ABT)] -> ABT
+metaSubstitute :: ABT -> [(MetaName, ABT)] -> ABT
 metaSubstitute p [] = p
 metaSubstitute m@(MetaVar n s) ((n', e):_)
-  | n == n' = substitute e s
+  | n == n'   = substitute e s
   | otherwise = m
-metaSubstitute v@(Var _) _ = v
-metaSubstitute (Node nt abts) msubs =
-  Node nt (map (`metaSubstitute` msubs) abts)
-metaSubstitute (Bind abt) msubs = Bind (metaSubstitute abt msubs)
+metaSubstitute v@(Var _)      _     = v
+metaSubstitute (Node nt abts) msubs = Node nt (map (`metaSubstitute` msubs) abts)
+metaSubstitute (Bind abt)     msubs = Bind (metaSubstitute abt msubs)

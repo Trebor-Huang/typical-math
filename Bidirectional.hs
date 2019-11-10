@@ -38,8 +38,15 @@ instance Monad Knowledge where
   fail l = Knows {assignment = Nothing, logstring = l, datum = Nothing}
 
 
-class Bidirectional j where
-    input  :: j -> ABT
-    output :: j -> ABT
-    toInferenceFunction :: j -> {- judgment :: -} Knowledge ABT -> Knowledge ABT
+-- A judgment susceptible for bidirectional type-checking
+-- consists of two parts: one named `input`, and another
+-- named `output`. However, These two parts are usually
+-- both bound by the context (in the input).
+-- In a inference rule, it is required that all the meta-
+-- variables in the input part of the premise is obtained
+-- by pattern matching with the input of the conclusion.
+-- Also, the output of the conclusion is completely obtained
+-- by pattern matching with the output of the premise.
+
+
 
