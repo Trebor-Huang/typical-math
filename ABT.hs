@@ -1,6 +1,6 @@
 module ABT
   ( VarName
-  , MetaName
+  , MetaName(..)
   , NodeType
   , ABT(..)
   , Substitution(..)
@@ -8,13 +8,17 @@ module ABT
   , substitute
   , beta
   , metaSubstitute
+  , freeMetaVar
   ) where
 
 type VarName = Int
 
 type NodeType = String
 
-type MetaName = (String, Int)
+data MetaName = Meta String Int deriving (Eq)
+
+instance Show MetaName where
+  show (Meta s i) = s
 
 data ABT
   = Var VarName
@@ -30,7 +34,8 @@ instance Show ABT where
   show (Var n)          = show n
   show (Node name abts) = '(' : name ++ concatMap ((' ' :) . show) abts ++ ")"
   show (Bind e)         = '.' : show e
-  show (MetaVar s c)    = '?' : (show s) ++ '[' : show c ++ "]"
+  show (MetaVar s (Shift 0)) = '?' : (show s)
+  show (MetaVar s c)         = '?' : (show s) ++ '[' : show c ++ "]"
 
 data Substitution
   = Shift Int
@@ -69,3 +74,9 @@ metaSubstitute m@(MetaVar n s) ((n', e):_)
 metaSubstitute v@(Var _)      _     = v
 metaSubstitute (Node nt abts) msubs = Node nt (map (`metaSubstitute` msubs) abts)
 metaSubstitute (Bind abt)     msubs = Bind (metaSubstitute abt msubs)
+
+freeMetaVar :: ABT -> [MetaName]
+freeMetaVar (Var _) = []
+freeMetaVar (Node _ abts) = concatMap freeMetaVar abts
+freeMetaVar (Bind abt) = freeMetaVar abt
+freeMetaVar (MetaVar n s) = [n]

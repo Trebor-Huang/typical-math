@@ -1,10 +1,13 @@
 module Utilities
   ( mergeAssoc
   , mergeAssocs
+  , substituteEqs
+  , freeMetaVarEqs
+  , justMetaVar
   ) where
 
 import           Control.Monad (foldM, join, liftM2, mapM)
-import           ABT (MetaName, ABT, metaSubstitute)
+import           ABT (MetaName(..), ABT(..), Substitution(..), metaSubstitute, freeMetaVar)
 
 -- utilities
 mergeAssoc ::
@@ -34,3 +37,11 @@ mergeAssocs asss = join $ foldM (liftM2 mergeAssoc) (Just []) (map Just asss)
 substituteEqs :: [(ABT, ABT)] -> [(MetaName, ABT)] -> [(ABT, ABT)]
 substituteEqs eqs subs =
   map (\(e1, e2) -> (metaSubstitute e1 subs, metaSubstitute e2 subs)) eqs
+
+freeMetaVarEqs :: [(ABT, ABT)] -> [MetaName]
+freeMetaVarEqs = concatMap helper
+  where helper :: (ABT, ABT) -> [MetaName]
+        helper (e1, e2) = (freeMetaVar e1) ++ (freeMetaVar e2)
+
+justMetaVar :: String -> ABT
+justMetaVar s = MetaVar (Meta s 0) (Shift 0)
