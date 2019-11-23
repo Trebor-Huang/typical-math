@@ -16,8 +16,7 @@ match (Var x) (Var y)
   | x == y = Just []
   | x /= y = Nothing
 match (Node n args) (Node n' args')
-  | n == n' -- dark magic typing... TODO Look into this further
-   = mergeAssocs =<< mapM (uncurry match) (zip args args')
+  | n == n' = mergeAssocs =<< mapM (uncurry match) (zip args args')
 match (Bind e) (Bind e') = match e e'
 match (MetaVar _ _) _ = Nothing
 
@@ -38,8 +37,8 @@ unify' ((n@(Node _ _), m@(MetaVar _ (Shift 0))) : eqs) = Just ((m, n) : eqs)
 unify' ((b@(Bind _),   m@(MetaVar _ (Shift 0))) : eqs) = Just ((m, b) : eqs)
 -- Eliminate / Check
 unify' ((m@(MetaVar n (Shift 0)), expr) : eqs)
-  | n `elem` (freeMetaVar expr) = Nothing
-  | n `notElem` (freeMetaVarEqs eqs) = Just (eqs ++ [(m, expr)])
+  | m `elem` (freeMetaVar expr) = Nothing
+  | m `notElem` (freeMetaVarEqs eqs) = Just (eqs ++ [(m, expr)])
   | otherwise = Just ((m, expr) : (substituteEqs eqs [(n, expr)]))
 -- The other part of swap : rigid meta-variables
 unify' ((m'@(MetaVar _ _), m@(MetaVar _ (Shift 0))) : eqs) = Just ((m, m') : eqs)
@@ -64,8 +63,8 @@ unify eqs = do
         helper' _ = False
         occurs :: [ABT] -> [ABT] -> Bool
         occurs ms exprs = any (`elem` (concatMap freeMetaVar exprs)) (map clean' ms)
-        clean' :: ABT -> MetaName
-        clean' (MetaVar n (Shift 0)) = n
+        clean' :: ABT -> ABT
+        clean' m@(MetaVar _ (Shift 0)) = m
         clean' _ = error "Panic! The algorithm has something wrong!!"
         clean :: [(ABT, ABT)] -> [(MetaName, ABT)]
         clean = map helper

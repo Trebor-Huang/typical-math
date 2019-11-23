@@ -18,7 +18,7 @@ type NodeType = String
 data MetaName = Meta String Int deriving (Eq)
 
 instance Show MetaName where
-  show (Meta s i) = s
+  show (Meta s i) = s ++ show i
 
 data ABT
   = Var VarName
@@ -29,6 +29,7 @@ data ABT
 
 -- Uses De Bruijn Indices starting from zero; therefore we can just derive the Eq class
 -- TODO See if the String param in Node should be replaced with a record type of Node types
+-- TODO Also we can implement the 'sort' of nodes.
 -- TODO Pretty print
 instance Show ABT where
   show (Var n)          = show n
@@ -75,8 +76,8 @@ metaSubstitute v@(Var _)      _     = v
 metaSubstitute (Node nt abts) msubs = Node nt (map (`metaSubstitute` msubs) abts)
 metaSubstitute (Bind abt)     msubs = Bind (metaSubstitute abt msubs)
 
-freeMetaVar :: ABT -> [MetaName]
+freeMetaVar :: ABT -> [ABT]
 freeMetaVar (Var _) = []
 freeMetaVar (Node _ abts) = concatMap freeMetaVar abts
 freeMetaVar (Bind abt) = freeMetaVar abt
-freeMetaVar (MetaVar n s) = [n]
+freeMetaVar m@(MetaVar n s) = [m]

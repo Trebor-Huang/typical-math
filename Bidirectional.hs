@@ -5,6 +5,7 @@ module Bidirectional
 import           ABT
 import           Control.Applicative (Applicative (..))
 import           Control.Monad       (ap, liftM, liftM2, join)
+import           Match               (match, unify)
 import           Utilities
 
 -- The idea is that knowledge of the assignment of meta-variables,
@@ -13,29 +14,36 @@ import           Utilities
 -- will be explained in the derivation function below.
 data Knowledge a
   = Knows
-      { assignment :: Maybe [(String, ABT)]
-      , logstring  :: String
-      , datum      :: Maybe a
+      { assignment :: [(String, ABT)]
+      , gensym     :: Int
+      , logstring  :: String  -- This should always end with a newline!
+      , datum      :: a
+      }
+    | Panic 
+      {
+        logstring :: String
       }
 
 instance Functor Knowledge where
   fmap = liftM
 
 instance Applicative Knowledge where
-  pure k = Knows {assignment = Just [], logstring = "", datum = Just k}
+  pure k = Knows {assignment = [], gensym = 0, logstring = "", datum = k}
   (<*>) = ap
 
 instance Monad Knowledge where
-  k >>= f = case datum k of  -- Uses pattern matching instead of monadic operations to avoid confusion
-    Just d -> Knows{
-                assignment = join $ (liftM2 mergeAssoc) (assignment k) (assignment obtained),
-                logstring  = logstring k ++ logstring obtained,
-                datum      = datum obtained
-              }
-        where obtained = f d
-    Nothing -> fail (logstring k)
+  k >>= f = case k of  -- TODO pack this up into a nice monadic expression
+    Knows ass gen logs dat -> case f dat of
+        Knows ass' gen' logs' dat' -> case mergeAssoc ass ass' of
+          Just assoc -> Knows assoc gen' (logs ++ logs') dat'
+          Nothing -> Panic (logs ++ logs' ++
+            "Assignment merge failed: \n  " ++ show ass ++ 
+            "\nand\n  " ++ show ass' ++ 
+            "\ncannot be merged.\n")
+        Panic logs' -> Panic (logs ++ logs')
+    Panic logs -> Panic logs
   return = pure
-  fail l = Knows {assignment = Nothing, logstring = l, datum = Nothing}
+  fail l = Panic {logstring = l}
 
 
 -- A judgment susceptible for bidirectional type-checking
@@ -48,5 +56,45 @@ instance Monad Knowledge where
 -- Also, the output of the conclusion is completely obtained
 -- by pattern matching with the output of the premise.
 
+-- We try out a more elegant approach, where the judgments are
+-- syntactically seperable to input and output parts, but not
+-- explicitly marked out. We use a basic form of unification,
+-- where meta-variables with closures are always treated as 
+-- rigid. If the arrangements of the judgments are correct, the
+-- information will propogate through the derivation tree, as if
+-- the input/output parts were correcly marked. In this way, a
+-- judgment is no different from a ordinary syntactic node:
 
+type Judgment = ABT
 
+-- If this does not work, we will fall back to the traditional
+-- bidirectional method instead.
+
+data InferenceRule 
+  = Rule 
+      { premises   :: [Judgment {- with meta-variable -}]
+      , conclusion ::  Judgment {- with meta-variable -}
+      }
+
+freeMetaVarInf r = freeMetaVar (conclusion r) ++ concatMap freeMetaVar (premises r)
+metaSubstituteInf r subs = Rule (map (`metaSubstitute` subs) (premises r))
+  ((conclusion r) `metaSubstitute` subs)
+
+data Derivation
+  = Derivation
+      { rule          :: InferenceRule
+      , derivePremise :: [Derivation {- without meta-variable -}]
+      , judgment      :: Judgment    {- without meta-variable -}
+      }
+
+getFresh :: InferenceRule -> Knowledge a -> Knowledge InferenceRule
+getFresh inf p@(Panic _) = p
+getFresh inf k = undefined
+
+checkDerivation :: Derivation -> Knowledge ()
+-- checks if the derivation is valid
+checkDerivation d = undefined
+
+inferWith :: Judgment -> InferenceRule -> Maybe Derivation
+-- turns a judgment into a derivation, given an inference rule
+inferWith = undefined

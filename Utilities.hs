@@ -38,9 +38,9 @@ substituteEqs :: [(ABT, ABT)] -> [(MetaName, ABT)] -> [(ABT, ABT)]
 substituteEqs eqs subs =
   map (\(e1, e2) -> (metaSubstitute e1 subs, metaSubstitute e2 subs)) eqs
 
-freeMetaVarEqs :: [(ABT, ABT)] -> [MetaName]
+freeMetaVarEqs :: [(ABT, ABT)] -> [ABT]
 freeMetaVarEqs = concatMap helper
-  where helper :: (ABT, ABT) -> [MetaName]
+  where helper :: (ABT, ABT) -> [ABT]
         helper (e1, e2) = (freeMetaVar e1) ++ (freeMetaVar e2)
 
 justMetaVar :: String -> ABT
