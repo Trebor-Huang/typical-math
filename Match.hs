@@ -37,6 +37,7 @@ unify' ((n@(Node _ _), m@(MetaVar _ (Shift 0))) : eqs) = Just ((m, n) : eqs)
 unify' ((b@(Bind _),   m@(MetaVar _ (Shift 0))) : eqs) = Just ((m, b) : eqs)
 -- Eliminate / Check
 unify' ((m@(MetaVar n (Shift 0)), expr) : eqs)
+  | m == expr = Just eqs
   | m `elem` (freeMetaVar expr) = Nothing
   | m `notElem` (freeMetaVarEqs eqs) = Just (eqs ++ [(m, expr)])
   | otherwise = Just ((m, expr) : (substituteEqs eqs [(n, expr)]))

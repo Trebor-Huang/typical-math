@@ -33,6 +33,7 @@ data ABT
 -- TODO Pretty print
 instance Show ABT where
   show (Var n)          = show n
+  show (Node name [])   = name
   show (Node name abts) = '(' : name ++ concatMap ((' ' :) . show) abts ++ ")"
   show (Bind e)         = '.' : show e
   show (MetaVar s (Shift 0)) = '?' : (show s)
