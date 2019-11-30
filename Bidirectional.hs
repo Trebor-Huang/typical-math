@@ -1,13 +1,9 @@
 module Bidirectional
-  ( Knowledge(..)
-  , Judgment
+  ( Judgment
   , InferenceRule(..)
   , Derivation(..)
   , checkDerivation
   , inferWith
-  , State (..)
-  , ignorance --TODO \
-  , runState  --TODO -- eliminate these
   ) where
 
 import           ABT
@@ -163,9 +159,9 @@ refresh gen inf = inf `metaSubstituteInf`
   map (\(MetaVar (Meta n i) _) -> ((Meta n i), MetaVar (Meta n gen) (Shift 0)))
     (freeMetaVarInf inf)
 
-checkDerivation :: State Derivation -> State ()
+checkDerivation_ :: State Derivation -> State ()
 -- checks if the derivation is valid
-checkDerivation d = do
+checkDerivation_ d = do
   derivation <- d
   -- we first match the rule's conclusion
   useRule <- getFresh (rule derivation)
@@ -180,7 +176,12 @@ checkDerivation d = do
       (zip (map judgment (derivePremise derivation)) (premises useRule))
       -- next we check the premises' derivation, recursively
     currentState <- get
-    mapM_ (checkDerivation . (`withState` currentState)) (derivePremise derivation)
+    mapM_ (checkDerivation_ . (`withState` currentState)) (derivePremise derivation)
+
+checkDerivation :: Derivation -> Bool
+checkDerivation d = case runState (checkDerivation_ (pure d)) ignorance of
+  ((), Knows _ _ _) -> True
+  ((), Panic _)     -> False
 
 
 tryInferWithRule :: Judgment -> InferenceRule -> Maybe [Judgment]
