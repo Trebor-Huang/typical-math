@@ -30,5 +30,6 @@ sszNat = Derivation sNat
     (isNat (s z))]
   (isNat (s (s z)))
 
+sszNat_auto = (isNat (s (s z))) `inferWith` [zNat, sNat]
 result = (runState (checkDerivation $ pure sszNat) ignorance)
 

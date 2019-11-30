@@ -6,13 +6,13 @@ module Bidirectional
   , checkDerivation
   , inferWith
   , State (..)
-  , ignorance
-  , runState
+  , ignorance --TODO \
+  , runState  --TODO -- eliminate these
   ) where
 
 import           ABT
 import           Control.Applicative (Applicative (..))
-import           Control.Monad       (ap, liftM, liftM2, join, mapM_)
+import           Control.Monad       (ap, liftM, liftM2, join, mapM_, mapM)
 import           Match               (match, unify)
 import           Utilities
 
@@ -54,7 +54,6 @@ instance Monad State where
   (State p) >>= f = State (\x -> let (d, state) = p x in runState (f d) state)
 
 -- Several utilities for the state monad.
--- TODO: We cancelled automatic merge in the state monad.
 
 get :: State Knowledge
 get = State (\s -> (s, s))
@@ -71,7 +70,7 @@ runState (State f) i = f i
 getGensym :: State Int
 getGensym = do
   k <- get
-  writeLog ("getGensym : " ++ (show k) ++ ";\n")
+  writeLog ("getGensym : " ++ (show k) ++ "\n")
   return (gensym k)
 
 incGensym :: State ()
@@ -80,7 +79,7 @@ incGensym = do
   case k of
     Knows ass gen logs -> do
       set (Knows ass (gen + 1) logs)
-      writeLog ("incGensym : " ++ (show (1+gensym k)) ++ ";\n")
+      writeLog ("incGensym : " ++ (show (1+gensym k)) ++ "\n")
 
 writeLog :: LogDoc -> State ()
 writeLog log = do
@@ -95,7 +94,7 @@ panic s = do
   set (Panic ((logstring state) ++ s))
 
 mergeMatch :: Maybe [(MetaName, ABT)] -> State ()
-mergeMatch Nothing = panic "[   Match] Match Failed;\n"
+mergeMatch Nothing = panic "match     : Match Failed\n"
 mergeMatch (Just ass) = do
   k <- get
   case k of
@@ -103,9 +102,9 @@ mergeMatch (Just ass) = do
     Knows ass' gen logs -> case (mergeAssoc ass ass') of
       Just assignment -> do
         set (Knows assignment gen logs)
-        writeLog "[   Match] Match success;\n"
+        -- writeLog "match     : Match success;\n"
       Nothing -> do
-        panic "[   Match] Match success but merge failed;\n"
+        panic "match     : Match success but merge failed\n"
 
 -- A judgment susceptible for bidirectional type-checking
 -- consists of two parts: one named `input`, and another
@@ -173,7 +172,7 @@ checkDerivation d = do
   mergeMatch (match (judgment derivation) (conclusion useRule))
   -- then we check the premises one by one
   if length (premises useRule) /= length (derivePremise derivation) then
-    panic "[   check] The number of premises of a derivation is wrong;"
+    panic "check     : The number of premises of a derivation is wrong;"
   else do
     -- first we need to ensure that the premises are in the correct form
     -- as asserted by the `useRule`
@@ -184,7 +183,20 @@ checkDerivation d = do
     mapM_ (checkDerivation . (`withState` currentState)) (derivePremise derivation)
 
 
-inferWith :: Judgment -> InferenceRule -> Maybe Derivation
--- turns a judgment into a derivation, given an inference rule
-inferWith = undefined
+tryInferWithRule :: Judgment -> InferenceRule -> Maybe [Judgment]
+j `tryInferWithRule` (Rule prems concl) = do
+  ass <- match j concl
+  return $ map (`metaSubstitute` ass) prems
+
+inferWith :: Judgment -> [InferenceRule] -> Maybe Derivation
+-- turns a judgment into a derivation, given inference rules
+j `inferWith` rules = case [d | Just d <- search j rules] of
+  []     -> Nothing
+  (d:ds) -> Just d
+  where search :: Judgment -> [InferenceRule] -> [Maybe Derivation]
+        search j rules = map (\r -> do
+            goals <- j `tryInferWithRule` r
+            subderivations <- mapM (`inferWith` rules) goals
+            return $ Derivation r subderivations j
+          ) rules
 
