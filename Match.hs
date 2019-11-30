@@ -1,7 +1,6 @@
 module Match
   ( match
   , unify
---, unify'
   ) where
 
 import           ABT
@@ -60,16 +59,21 @@ unify eqs = do
     return result
   where done :: [(ABT, ABT)] -> Bool
         done eqs = all helper' eqs && not ((map fst eqs) `occurs` (map snd eqs))
+
         helper' :: (ABT, ABT) -> Bool
         helper' (MetaVar n (Shift 0), expr) = True
         helper' _ = False
+
         occurs :: [ABT] -> [ABT] -> Bool
         occurs ms exprs = any (`elem` (concatMap freeMetaVar exprs)) (map clean' ms)
+
         clean' :: ABT -> ABT
         clean' m@(MetaVar _ (Shift 0)) = m
         clean' _ = error "Panic! The algorithm has something wrong!!"
+
         clean :: [(ABT, ABT)] -> [(MetaName, ABT)]
         clean = map helper
+        
         helper :: (ABT, ABT) -> (MetaName, ABT)
         helper (MetaVar n (Shift 0), expr) = (n, expr)
         helper _ = error "Panic! The algorithm has something wrong!!"
