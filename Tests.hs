@@ -1,4 +1,4 @@
-module Tests(a,b,f,g,x,y) where
+module Tests (a,b,f,g,x,y) where
 
 import ABT
 import Match
@@ -30,6 +30,5 @@ sszNat = Derivation sNat
     (isNat (s z))]
   (isNat (s (s z)))
 
-sszNat_auto = (isNat (s (s z))) `inferWith` [zNat, sNat]
+sszNat_auto = (isNat (s (s y))) `inferWith` [zNat, sNat]
 result = checkDerivation sszNat
-

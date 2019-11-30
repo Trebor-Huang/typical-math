@@ -24,18 +24,13 @@ data Knowledge
       , gensym     :: Int
       , logstring  :: LogDoc  -- This should always end with a newline!
       }
-    | Panic 
-      {
-        logstring :: LogDoc
-      }
 
 instance Show Knowledge where
   show (Knows ass gen log) = "(Knows : " ++ (show ass) ++ " Currenc gensym: " ++ (show gen) ++ ")"
-  show (Panic log) = "Panicking!"
 
 ignorance = Knows [] 0 "Starting from ignorance;\n"
 
-data State a = State {_state :: Knowledge -> (a, Knowledge)}
+data State a =  State { getState :: Knowledge -> (Maybe a, Knowledge) }
 
 instance Functor State where
   fmap = liftM
@@ -45,23 +40,34 @@ instance Applicative State where
   (<*>) = ap
 
 instance Monad State where
-  return x = State (\s -> (x, s))
+  return x = State (\s -> (Just x, s))
 
-  (State p) >>= f = State (\x -> let (d, state) = p x in runState (f d) state)
+  (State p) >>= f = State (\x -> let (d, state) = p x in
+    case d of
+      Just d' -> runState (f d') state
+      Nothing -> (Nothing, state)
+    )
 
 -- Several utilities for the state monad.
 
+runState :: State a -> Knowledge -> (Maybe a, Knowledge)
+runState (State f) i = f i
+
 get :: State Knowledge
-get = State (\s -> (s, s))
+get = State (\s -> (Just s, s))
 
 set :: Knowledge -> State ()
-set k = State (\s -> ((), k))
+set k = State (\s -> (Just (), k))
+
+mergeState :: Knowledge -> State ()
+mergeState (Knows ass gen log) = State f
+  where f :: Knowledge -> (Maybe (), Knowledge)
+        f (Knows ass' gen' log') = case (mergeAssoc ass ass') of
+          Just m -> (Just (), (Knows m (max gen gen') (log ++ log')))
+          Nothing -> (Nothing, (Knows [] (max gen gen') (log ++ log' ++ "Merge failed!\n")))
 
 withState :: a -> Knowledge -> State a
-d `withState` s = State (\s -> (d, s))
-
-runState :: State a -> Knowledge -> (a, Knowledge)
-runState (State f) i = f i
+d `withState` s = State (\s -> (Just d, s))
 
 getGensym :: State Int
 getGensym = do
@@ -80,27 +86,26 @@ incGensym = do
 writeLog :: LogDoc -> State ()
 writeLog log = do
   state <- get
-  case state of
-    Knows ass gen logs -> set (Knows ass gen (logs ++ log))
-    Panic logs -> set (Panic (logs ++ log))
+  set (state {logstring = (logstring state ++ log)})
 
-panic :: LogDoc -> State ()
-panic s = do
-  state <- get
-  set (Panic ((logstring state) ++ s))
+panic :: LogDoc -> State a
+panic d = State (\s -> (Nothing, s {logstring = logstring s ++ d}))
 
 mergeMatch :: Maybe [(MetaName, ABT)] -> State ()
 mergeMatch Nothing = panic "match     : Match Failed\n"
 mergeMatch (Just ass) = do
   k <- get
   case k of
-    Panic logs -> panic logs
     Knows ass' gen logs -> case (mergeAssoc ass ass') of
       Just assignment -> do
         set (Knows assignment gen logs)
-        -- writeLog "match     : Match success;\n"
       Nothing -> do
         panic "match     : Match success but merge failed\n"
+
+metaSubstituteFromState :: ABT -> State ABT
+metaSubstituteFromState expr = do
+  knowledge <- get
+  return (expr `metaSubstitute` (assignment knowledge))
 
 -- A judgment susceptible for bidirectional type-checking
 -- consists of two parts: one named `input`, and another
@@ -148,11 +153,20 @@ data Derivation
       , judgment      :: Judgment    {- without meta-variable -}
       } deriving (Show)
 
+metaSubstituteDer :: Derivation -> [(MetaName, ABT)] -> Derivation
+metaSubstituteDer (Derivation r ds j) subs =
+  Derivation r (map (`metaSubstituteDer` subs) ds) (j `metaSubstitute` subs)
+
+metaSubstituteDerFromState :: Derivation -> State Derivation
+metaSubstituteDerFromState d = do
+  knowledge <- get
+  return (d `metaSubstituteDer` (assignment knowledge))
+
 getFresh :: InferenceRule -> State InferenceRule
 getFresh inf = do
-  g <- getGensym
   incGensym
-  return $ refresh (g+1) inf
+  g <- getGensym
+  return $ refresh g inf
 
 refresh :: Int -> InferenceRule -> InferenceRule
 refresh gen inf = inf `metaSubstituteInf`
@@ -180,24 +194,47 @@ checkDerivation_ d = do
 
 checkDerivation :: Derivation -> Bool
 checkDerivation d = case runState (checkDerivation_ (pure d)) ignorance of
-  ((), Knows _ _ _) -> True
-  ((), Panic _)     -> False
+  (Just (), _) -> True
+  (Nothing, _) -> False
 
 
-tryInferWithRule :: Judgment -> InferenceRule -> Maybe [Judgment]
+tryInferWithRule :: Judgment -> InferenceRule -> State [Judgment]
 j `tryInferWithRule` (Rule prems concl) = do
-  ass <- match j concl
-  return $ map (`metaSubstitute` ass) prems
+  mergeMatch (unify [(j, concl)])
+  mapM metaSubstituteFromState prems
+
+inferWith_ :: State Judgment -> [InferenceRule] -> State Derivation
+-- turns a judgment into a derivation, given inference rules
+j `inferWith_` rules = do
+  j' <- j
+  writeLog ("Inferring : " ++ show j' ++ "\n")
+  k <- get
+  let trials = map (`runState` k) (search j' rules) in
+    case [(x, y) | (Just x, y) <- trials] of
+      [] -> do
+        -- mapM_ (writeLog . logstring . snd) trials
+        panic "No rules applicable!\n"
+      ((d, k'):ds) -> do
+        mergeState k'
+        d' <- metaSubstituteDerFromState d
+        return d'
+  where search :: Judgment -> [InferenceRule] -> [State Derivation]
+        search j = map (\r -> do
+            k <- get
+            set (k {logstring = ""})
+            writeLog ("Using " ++ show r ++ "\n")
+            rf <- getFresh r
+            goals <- tryInferWithRule j rf
+            k <- get
+            goalDerivations <- mapM (`inferWith_` rules) [g `withState` k | g <- goals]
+            j' <- metaSubstituteFromState j
+            return $ Derivation rf goalDerivations j'
+          )
+
 
 inferWith :: Judgment -> [InferenceRule] -> Maybe Derivation
--- turns a judgment into a derivation, given inference rules
-j `inferWith` rules = case [d | Just d <- search j rules] of
-  []     -> Nothing
-  (d:ds) -> Just d
-  where search :: Judgment -> [InferenceRule] -> [Maybe Derivation]
-        search j rules = map (\r -> do
-            goals <- j `tryInferWithRule` r
-            subderivations <- mapM (`inferWith` rules) goals
-            return $ Derivation r subderivations j
-          ) rules
-
+j `inferWith` rules = case fst $ runState ((pure j) `inferWith_` rules) ignorance of
+  Just derivation -> case checkDerivation derivation of
+    True -> Just derivation
+    False -> Nothing
+  Nothing -> Nothing

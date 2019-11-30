@@ -10,25 +10,31 @@ import           Control.Monad (foldM, join, liftM2, mapM)
 import           ABT (MetaName(..), ABT(..), Substitution(..), metaSubstitute, freeMetaVar)
 
 -- utilities
-mergeAssoc :: (Eq key, Eq value) => [(key, value)] -> [(key, value)] -> Maybe [(key, value)]
+mergeAssoc :: [(MetaName, ABT)] -> [(MetaName, ABT)] -> Maybe [(MetaName, ABT)]
 mergeAssoc [] assoc = Just assoc
 mergeAssoc ((k, v):as) assoc =
   (append (k, v) assoc) >>= (\assoc' -> mergeAssoc as assoc')
   where
-    append :: (Eq key, Eq value) => (key, value) -> [(key, value)] -> Maybe [(key, value)]
+    append :: (MetaName, ABT) -> [(MetaName, ABT)] -> Maybe [(MetaName, ABT)]
     append (k, v) assoc
       | k `elem` (map fst assoc) =
         case v == snd (head (filter ((== k) . fst) assoc)) of
           True  -> Just assoc
           False -> Nothing
-      | otherwise = Just ((k, v) : assoc)
+      | otherwise = Just ((k, v) : assoc `substituteSubs` [(k, v)])
 
-mergeAssocs :: (Eq key, Eq value) => [[(key, value)]] -> Maybe [(key, value)]
+mergeAssocs :: [[(MetaName, ABT)]] -> Maybe [(MetaName, ABT)]
 mergeAssocs asss = join $ foldM (liftM2 mergeAssoc) (Just []) (map Just asss)
 
 substituteEqs :: [(ABT, ABT)] -> [(MetaName, ABT)] -> [(ABT, ABT)]
 substituteEqs eqs subs =
   map (\(e1, e2) -> (metaSubstitute e1 subs, metaSubstitute e2 subs)) eqs
+
+substituteSubs :: [(MetaName, ABT)] -> [(MetaName, ABT)] -> [(MetaName, ABT)]
+substituteSubs s subs =
+  map (\(m, e2) -> (m, metaSubstitute e2 subs)) s
+
+metaSubstituteCompose = flip substituteSubs
 
 freeMetaVarEqs :: [(ABT, ABT)] -> [ABT]
 freeMetaVarEqs = concatMap helper
