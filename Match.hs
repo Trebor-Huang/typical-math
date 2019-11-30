@@ -19,6 +19,7 @@ match (Node n args) (Node n' args')
   | n == n' = mergeAssocs =<< mapM (uncurry match) (zip args args')
 match (Bind e) (Bind e') = match e e'
 match (MetaVar _ _) _ = Nothing
+match _ _ = Nothing
 
 unify' :: [(ABT, ABT)] -> Maybe [(ABT, ABT)]
 -- one cycle of the unification process
