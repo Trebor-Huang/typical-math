@@ -8,7 +8,7 @@ module Bidirectional
 
 import           ABT
 import           Control.Applicative (Applicative (..))
-import           Control.Monad       (ap, liftM, liftM2, join, mapM_, mapM)
+import           Control.Monad       (ap, liftM, join, mapM_, mapM)
 import           Match               (match, unify)
 import           Utilities
 
@@ -203,38 +203,31 @@ j `tryInferWithRule` (Rule prems concl) = do
   mergeMatch (unify [(j, concl)])
   mapM metaSubstituteFromState prems
 
-inferWith_ :: State Judgment -> [InferenceRule] -> State Derivation
--- turns a judgment into a derivation, given inference rules
-j `inferWith_` rules = do
-  j' <- j
-  writeLog ("Inferring : " ++ show j' ++ "\n")
-  k <- get
-  let trials = map (`runState` k) (search j' rules) in
-    case [(x, y) | (Just x, y) <- trials] of
-      [] -> do
-        -- mapM_ (writeLog . logstring . snd) trials
-        panic "No rules applicable!\n"
-      ((d, k'):ds) -> do
-        mergeState k'
-        d' <- metaSubstituteDerFromState d
-        return d'
-  where search :: Judgment -> [InferenceRule] -> [State Derivation]
-        search j = map (\r -> do
-            k <- get
-            set (k {logstring = ""})
-            writeLog ("Using " ++ show r ++ "\n")
-            rf <- getFresh r
-            goals <- tryInferWithRule j rf
-            k <- get
-            goalDerivations <- mapM (`inferWith_` rules) [g `withState` k | g <- goals]
-            j' <- metaSubstituteFromState j
-            return $ Derivation rf goalDerivations j'
+inferWith_ :: State Judgment -> [InferenceRule] -> [State Derivation]
+j `inferWith_` rules = do -- backtracking
+  r <- rules  -- try using a rule
+  let (goalss, cont) = getGoalsAndContinuation j r
+  onePossibilityOfGoalInference <- inferGoals goalss rules
+  return (cont onePossibilityOfGoalInference)
+  where getGoalsAndContinuation :: State Judgment -> InferenceRule -> (State [Judgment], (State [Derivation] -> State Derivation))
+        getGoalsAndContinuation sj r = ((do
+          j <- sj
+          writeLog ("Inferring : " ++ show j ++ " using rule: " ++ show r ++ "\n")
+          rf <- getFresh r
+          tryInferWithRule j rf), \goalDer -> (do
+              j <- sj
+              writeLog ("Continue Inferring " ++ show j ++ " using rule: " ++ show r ++ "\n")
+              goalDerivations <- goalDer
+              j' <- metaSubstituteFromState j
+              writeLog ("Finished Inferring " ++ show j)
+              return $ Derivation r goalDerivations j'
+            )
           )
+        inferGoals :: State [Judgment] -> [InferenceRule] -> [State [Derivation]]
+        inferGoals sjs rules = undefined
 
 
 inferWith :: Judgment -> [InferenceRule] -> Maybe Derivation
-j `inferWith` rules = case fst $ runState ((pure j) `inferWith_` rules) ignorance of
-  Just derivation -> case checkDerivation derivation of
-    True -> Just derivation
-    False -> Nothing
-  Nothing -> Nothing
+j `inferWith` rules = case [ x | Just x <- map (\x -> fst $ runState x ignorance) ((pure j) `inferWith_` rules)] of
+  (d: ds) -> Just d  -- Hm. Should we throw error on non-singletons?
+  []      -> Nothing
