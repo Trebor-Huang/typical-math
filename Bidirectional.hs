@@ -203,6 +203,7 @@ j `tryInferWithRule` (Rule prems concl) = do
   mergeMatch (unify [(j, concl)])
   mapM metaSubstituteFromState prems
 
+{-
 inferWith_ :: State Judgment -> [InferenceRule] -> [State Derivation]
 j `inferWith_` rules = do -- backtracking
   r <- rules  -- try using a rule
@@ -225,7 +226,10 @@ j `inferWith_` rules = do -- backtracking
           )
         inferGoals :: State [Judgment] -> [InferenceRule] -> [State [Derivation]]
         inferGoals sjs rules = undefined
+-}
 
+contract :: State [State [a]] -> State [a]
+contract s = undefined
 
 inferWith :: Judgment -> [InferenceRule] -> Maybe Derivation
 j `inferWith` rules = case [ x | Just x <- map (\x -> fst $ runState x ignorance) ((pure j) `inferWith_` rules)] of
