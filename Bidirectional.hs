@@ -173,10 +173,9 @@ refresh gen inf = inf `metaSubstituteInf`
   map (\(MetaVar (Meta n i) _) -> ((Meta n i), MetaVar (Meta n gen) (Shift 0)))
     (freeMetaVarInf inf)
 
-checkDerivation_ :: State Derivation -> State ()
+checkDerivation_ :: Derivation -> State ()
 -- checks if the derivation is valid
-checkDerivation_ d = do
-  derivation <- d
+checkDerivation_ derivation = do
   -- we first match the rule's conclusion
   useRule <- getFresh (rule derivation)
   mergeMatch (match (judgment derivation) (conclusion useRule))
@@ -190,10 +189,10 @@ checkDerivation_ d = do
       (zip (map judgment (derivePremise derivation)) (premises useRule))
       -- next we check the premises' derivation, recursively
     currentState <- get
-    mapM_ (checkDerivation_ . (`withState` currentState)) (derivePremise derivation)
+    mapM_ checkDerivation_ (derivePremise derivation)
 
 checkDerivation :: Derivation -> Bool
-checkDerivation d = case runState (checkDerivation_ (pure d)) ignorance of
+checkDerivation d = case runState (checkDerivation_ d) ignorance of
   (Just (), _) -> True
   (Nothing, _) -> False
 
@@ -203,35 +202,34 @@ j `tryInferWithRule` (Rule prems concl) = do
   mergeMatch (unify [(j, concl)])
   mapM metaSubstituteFromState prems
 
-{-
-inferWith_ :: State Judgment -> [InferenceRule] -> [State Derivation]
-j `inferWith_` rules = do -- backtracking
-  r <- rules  -- try using a rule
-  let (goalss, cont) = getGoalsAndContinuation j r
-  onePossibilityOfGoalInference <- inferGoals goalss rules
-  return (cont onePossibilityOfGoalInference)
-  where getGoalsAndContinuation :: State Judgment -> InferenceRule -> (State [Judgment], (State [Derivation] -> State Derivation))
-        getGoalsAndContinuation sj r = ((do
-          j <- sj
-          writeLog ("Inferring : " ++ show j ++ " using rule: " ++ show r ++ "\n")
-          rf <- getFresh r
-          tryInferWithRule j rf), \goalDer -> (do
-              j <- sj
-              writeLog ("Continue Inferring " ++ show j ++ " using rule: " ++ show r ++ "\n")
-              goalDerivations <- goalDer
-              j' <- metaSubstituteFromState j
-              writeLog ("Finished Inferring " ++ show j)
-              return $ Derivation r goalDerivations j'
-            )
-          )
-        inferGoals :: State [Judgment] -> [InferenceRule] -> [State [Derivation]]
-        inferGoals sjs rules = undefined
--}
+-- this alternate list type is for backtracking purposes
+-- lest I confuse it with the ordinary list type
 
-contract :: State [State [a]] -> State [a]
-contract s = undefined
+type Backtrack a = [a]
+
+getGoalsAndContinuation :: Judgment -> InferenceRule -> (State [Judgment], ([Derivation] -> State Derivation))
+getGoalsAndContinuation j r =
+  ( (do writeLog ("Inferring : " ++ show j ++ " using rule: " ++ show r ++ "\n")
+        rf <- getFresh r
+        tryInferWithRule j rf),
+    \goalDerivations ->
+      (do writeLog ("Continue Inferring " ++ show j ++ " using rule: " ++ show r ++ "\n")
+          j' <- metaSubstituteFromState j
+          writeLog ("Finished Inferring " ++ show j)
+          return $ Derivation r goalDerivations j'))
+
+inferGoals :: [Judgment] -> [InferenceRule] -> State (Backtrack [Derivation])
+inferGoals []     rules = return [[]]
+inferGoals (j:js) rules = undefined
+
+inferWith_ :: Judgment -> [InferenceRule] -> Backtrack (State Derivation)
+-- A backtracking tree-builder
+-- I've adopter rather long variable names here
+j `inferWith_` rules = do
+  -- remember to do metasubstitution at the right time!
+  undefined
 
 inferWith :: Judgment -> [InferenceRule] -> Maybe Derivation
-j `inferWith` rules = case [ x | Just x <- map (\x -> fst $ runState x ignorance) ((pure j) `inferWith_` rules)] of
+j `inferWith` rules = case [ x | Just x <- undefined] of
   (d: ds) -> Just d  -- Hm. Should we throw error on non-singletons?
   []      -> Nothing
