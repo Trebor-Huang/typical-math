@@ -30,5 +30,5 @@ sszNat = Derivation sNat
     (isNat (s z))]
   (isNat (s (s z)))
 
-sszNat_auto = (isNat (s (s y))) `inferWith` [zNat, sNat]
+Just sszNat_auto = (isNat (s (s z))) `inferWith` [zNat, sNat]
 result = checkDerivation sszNat

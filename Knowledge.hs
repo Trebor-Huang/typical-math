@@ -8,6 +8,8 @@ import           Utilities
 
 -- This module defines the necessary data structures for Bidirectional.hs
 
+-- TODO refactor the system so that it is more easily extensible
+
 -- The idea is that knowledge of the assignment of meta-variables,
 -- and, by the way, the uuid stuff is carried through the derivation
 -- process, and thus has a monadic feature. So we can easily add a log
@@ -18,10 +20,10 @@ data Knowledge = Knows
     { assignment :: [(MetaName, ABT)]
     , gensym     :: Int
     , logstring  :: LogDoc  -- This should always end with a newline!
-    }
+    } deriving (Show)
 
-instance Show Knowledge where
-  show (Knows ass gen log) = "(Knows : " ++ (show ass) ++ " Currenc gensym: " ++ (show gen) ++ ")"
+--instance Show Knowledge where
+--  show (Knows ass gen log) = "(Knows : " ++ (show ass) ++ " Currenc gensym: " ++ (show gen) ++ ")"
 
 ignorance = Knows [] 0 "Starting from ignorance;\n"
 
@@ -168,4 +170,33 @@ refresh gen inf = inf `metaSubstituteInf`
   map (\(MetaVar (Meta n i) _) -> ((Meta n i), MetaVar (Meta n gen) (Shift 0)))
     (freeMetaVarInf inf)
 
--- We implement backtracking in the form of a monad transformer
+-- Actually there is no backtracking happening here
+-- We store all the failures with a Nothing
+
+data StateBacktrack a =  StateBacktrack { getStateBacktrack :: Knowledge -> [(Maybe a, Knowledge)] }
+
+instance Functor StateBacktrack where
+  fmap = liftM
+
+instance Applicative StateBacktrack where
+  pure = return
+  (<*>) = ap
+
+instance Monad StateBacktrack where
+  return x = StateBacktrack (\s -> [(Just x, s)])
+
+  (StateBacktrack p) >>= f = StateBacktrack (\s ->
+      [ b | a <- p s, b <- case fst a of
+          Nothing -> [(Nothing, snd a)]
+          Just ar -> getStateBacktrack (f $ ar) (snd a)
+        ]
+    )
+
+runStateBacktrack :: StateBacktrack a -> Knowledge -> [(Maybe a, Knowledge)]
+runStateBacktrack (StateBacktrack f) s = f s
+
+liftBacktrack :: State a -> StateBacktrack a
+liftBacktrack (State f) = StateBacktrack (\s -> [f s])
+
+caseSplit :: [a] -> StateBacktrack a
+caseSplit cases = StateBacktrack (\s -> [(Just c, s) | c <- cases])

@@ -4,7 +4,6 @@ module Utilities
   , substituteEqs
   , freeMetaVarEqs
   , justMetaVar
-  , contract
   ) where
 
 import           Control.Monad (foldM, join, liftM2, mapM, liftM)
@@ -44,9 +43,3 @@ freeMetaVarEqs = concatMap helper
 
 justMetaVar :: String -> ABT
 justMetaVar s = MetaVar (Meta s 0) (Shift 0)
-
-contract :: (Monad s) => s [s [a]] -> s [a]
-contract s = do
-  l <- s
-  foldM liftedAppend [] l
-  where liftedAppend a = liftM (a ++)

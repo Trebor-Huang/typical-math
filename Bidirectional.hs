@@ -4,6 +4,7 @@ module Bidirectional
   , Derivation(..)
   , checkDerivation
   , inferWith
+  , inferWith_  -- facilates debug process
   ) where
 
 import           ABT
@@ -43,30 +44,30 @@ j `tryInferWithRule` (Rule prems concl) = do
   mergeMatch (unify [(j, concl)])
   mapM metaSubstituteFromState prems
 
+-- the two functions below do mutual recursion
+-- the first one solves a list of goals sequentially using the second one
+-- and the second one solves one goal, and when encountering a list of goals,
+-- uses the first function
+inferGoals :: [Judgment] -> [InferenceRule] -> StateBacktrack [Derivation]
+inferGoals []     rules = return []
+inferGoals (j:js) rules = do
+  derivation <- j `inferWith_` rules
+  js <- liftBacktrack $ mapM metaSubstituteFromState js
+  derivations <- inferGoals js rules
+  derivation <- liftBacktrack $ metaSubstituteDerFromState derivation
+  return (derivation : derivations)
 
-getGoalsAndContinuation :: Judgment -> InferenceRule -> (State [Judgment], ([Derivation] -> State Derivation))
-getGoalsAndContinuation j r =
-  ( (do writeLog ("Inferring : " ++ show j ++ " using rule: " ++ show r ++ "\n")
-        rf <- getFresh r
-        tryInferWithRule j rf),
-    \goalDerivations ->
-      (do writeLog ("Continue Inferring " ++ show j ++ " using rule: " ++ show r ++ "\n")
-          j' <- metaSubstituteFromState j
-          writeLog ("Finished Inferring " ++ show j)
-          return $ Derivation r goalDerivations j'))
-
-inferGoals :: [Judgment] -> [InferenceRule] -> State (Backtrack [Derivation])
-inferGoals []     rules = return [[]]
-inferGoals (j:js) rules = undefined
-
-inferWith_ :: Judgment -> [InferenceRule] -> Backtrack (State Derivation)
--- A backtracking tree-builder
--- I've adopter rather long variable names here
-j `inferWith_` rules = do
-  -- remember to do metasubstitution at the right time!
-  undefined
+inferWith_ :: Judgment -> [InferenceRule] -> StateBacktrack Derivation
+inferWith_ j rules = do
+  r <- caseSplit rules  -- use of the backtracking functionality
+  r <- liftBacktrack $ getFresh r  -- avoids clash
+  liftBacktrack $ writeLog $ "Tries to use rule: " ++ show r ++ "\n"
+  goals <- liftBacktrack $ j `tryInferWithRule` r
+  goalDerivations <- inferGoals goals rules
+  j <- liftBacktrack $ metaSubstituteFromState j
+  return $ Derivation r goalDerivations j
 
 inferWith :: Judgment -> [InferenceRule] -> Maybe Derivation
-j `inferWith` rules = case [ x | Just x <- undefined] of
+j `inferWith` rules = case [ x | (Just x, kn) <- runStateBacktrack (j `inferWith_` rules) ignorance] of
   (d: ds) -> Just d  -- Hm. Should we throw error on non-singletons?
   []      -> Nothing
