@@ -6,7 +6,7 @@ module Match
 import           ABT
 import           Utilities (mergeAssoc, mergeAssocs, substituteEqs, freeMetaVarEqs)
 
-match :: ABT -> ABT -> Maybe [(MetaName, ABT)]
+match :: ABT -> ABT -> Maybe Assignment
 -- match expr pattern ~> association list of meta-vars and expr's
 -- in principle, the matched meta-vars should have no closure (Shift 0).
 match e (MetaVar n (Shift 0)) = Just [(n, e)]
@@ -45,7 +45,7 @@ unify' ((m@(MetaVar n (Shift 0)), expr) : eqs)
 unify' ((m'@(MetaVar _ _), m@(MetaVar _ (Shift 0))) : eqs) = Just ((m, m') : eqs)
 
 
-unify :: [(ABT, ABT)] -> Maybe [(MetaName, ABT)]
+unify :: [(ABT, ABT)] -> Maybe Assignment
 -- unify equations ~> substitutions
 -- TODO this currently sees meta-variables with closures as rigid.
 -- we may implement a more powerful unification algorithm that
@@ -71,7 +71,7 @@ unify eqs = do
         clean' m@(MetaVar _ (Shift 0)) = m
         clean' _ = error "Panic! The algorithm has something wrong!!"
 
-        clean :: [(ABT, ABT)] -> [(MetaName, ABT)]
+        clean :: [(ABT, ABT)] -> Assignment
         clean = map helper
         
         helper :: (ABT, ABT) -> (MetaName, ABT)

@@ -23,7 +23,7 @@ checkDerivation_ derivation = do
   mergeMatch (match (judgment derivation) (conclusion useRule))
   -- then we check the premises one by one
   if length (premises useRule) /= length (derivePremise derivation) then
-    panic "check     : The number of premises of a derivation is wrong;"
+    panic "The number of premises of a derivation is wrong;\n"
   else do
     -- first we need to ensure that the premises are in the correct form
     -- as asserted by the `useRule`
@@ -55,6 +55,7 @@ inferGoals (j:js) rules = do
   js <- liftBacktrack $ mapM metaSubstituteFromState js
   derivations <- inferGoals js rules
   derivation <- liftBacktrack $ metaSubstituteDerFromState derivation
+  -- TODO: maybe these substitutions are somehow redundant..?
   return (derivation : derivations)
 
 inferWith_ :: Judgment -> [InferenceRule] -> StateBacktrack Derivation

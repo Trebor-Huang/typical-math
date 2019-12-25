@@ -17,7 +17,7 @@ import           Utilities
 type LogDoc = String
 
 data Knowledge = Knows
-    { assignment :: [(MetaName, ABT)]
+    { assignment :: Assignment
     , gensym     :: Int
     , logstring  :: LogDoc  -- This should always end with a newline!
     } deriving (Show)
@@ -66,19 +66,30 @@ mergeState (Knows ass gen log) = State f
 withState :: a -> Knowledge -> State a
 d `withState` s = State (\s -> (Just d, s))
 
+getAssignment :: State Assignment
+getAssignment = do
+  k <- get
+  return (assignment k)
+
+setAssignment :: Assignment -> State ()
+setAssignment ass = do
+  k <- get
+  set (k{assignment = ass})
+
 getGensym :: State Int
 getGensym = do
   k <- get
-  writeLog ("getGensym : " ++ (show k) ++ "\n")
   return (gensym k)
+
+setGensym :: Int -> State ()
+setGensym n = do
+  k <- get
+  set (k{gensym = n})
 
 incGensym :: State ()
 incGensym = do
-  k <- get
-  case k of
-    Knows ass gen logs -> do
-      set (Knows ass (gen + 1) logs)
-      writeLog ("incGensym : " ++ (show (1+gensym k)) ++ "\n")
+  n <- getGensym
+  setGensym (n+1)
 
 writeLog :: LogDoc -> State ()
 writeLog log = do
@@ -88,16 +99,15 @@ writeLog log = do
 panic :: LogDoc -> State a
 panic d = State (\s -> (Nothing, s {logstring = logstring s ++ d}))
 
-mergeMatch :: Maybe [(MetaName, ABT)] -> State ()
-mergeMatch Nothing = panic "match     : Match Failed\n"
+mergeMatch :: Maybe Assignment -> State ()
+mergeMatch Nothing = panic "Match Failed\n"
 mergeMatch (Just ass) = do
   k <- get
-  case k of
-    Knows ass' gen logs -> case (mergeAssoc ass ass') of
-      Just assignment -> do
-        set (Knows assignment gen logs)
-      Nothing -> do
-        panic "match     : Match success but merge failed\n"
+  case (mergeAssoc ass (assignment k)) of
+    Just assignment -> do
+      set (k{assignment = assignment})
+    Nothing -> do
+      panic "Match success but merge failed\n"
 
 metaSubstituteFromState :: ABT -> State ABT
 metaSubstituteFromState expr = do
@@ -150,7 +160,7 @@ data Derivation
       , judgment      :: Judgment    {- without meta-variable -}
       } deriving (Show)
 
-metaSubstituteDer :: Derivation -> [(MetaName, ABT)] -> Derivation
+metaSubstituteDer :: Derivation -> Assignment -> Derivation
 metaSubstituteDer (Derivation r ds j) subs =
   Derivation r (map (`metaSubstituteDer` subs) ds) (j `metaSubstitute` subs)
 

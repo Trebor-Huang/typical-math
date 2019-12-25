@@ -9,11 +9,12 @@ module ABT
   , beta
   , metaSubstitute
   , freeMetaVar
+  , Assignment
   ) where
 
 type VarName = Int
-
 type NodeType = String
+type Assignment = [(MetaName, ABT)]
 
 data MetaName = Meta String Int deriving (Eq)
 
@@ -68,7 +69,7 @@ beta :: ABT -> ABT -> ABT
 beta (Bind e1) e2 = substitute e1 (Dot e2 (Shift 0))
 beta _         _  = error "beta is for Bind only."
 
-metaSubstitute :: ABT -> [(MetaName, ABT)] -> ABT
+metaSubstitute :: ABT -> Assignment -> ABT
 metaSubstitute p [] = p
 metaSubstitute m@(MetaVar n s) ((n', e):_)
   | n == n'   = substitute e s
@@ -81,4 +82,4 @@ freeMetaVar :: ABT -> [ABT]
 freeMetaVar (Var _) = []
 freeMetaVar (Node _ abts) = concatMap freeMetaVar abts
 freeMetaVar (Bind abt) = freeMetaVar abt
-freeMetaVar m@(MetaVar n s) = [m]
+freeMetaVar m@(MetaVar _ _) = [m]
