@@ -17,11 +17,11 @@ x = justMetaVar "X"
 y = justMetaVar "Y"
 
 z = Node "Z" []
-s x = Node "S" [x]
+s x = Node "suc" [x]
 
 isNat x = Node "isNat" [x]
-zNat = Rule [] (isNat z)
-sNat = Rule [isNat x] (isNat (s x))
+zNat = Rule [] (isNat z) "zNat"
+sNat = Rule [isNat x] (isNat (s x)) "sNat"
 
 sszNat = Derivation sNat 
   [Derivation sNat 

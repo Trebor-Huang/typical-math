@@ -3,6 +3,7 @@ module Knowledge where
 import           ABT
 import           Control.Applicative (Applicative (..))
 import           Control.Monad       (ap, liftM, join, mapM_, mapM)
+import           Data.List           (intercalate)
 import           Match               (match, unify)
 import           Utilities
 
@@ -19,11 +20,14 @@ type LogDoc = String
 data Knowledge = Knows
     { assignment :: Assignment
     , gensym     :: Int
-    , logstring  :: LogDoc  -- This should always end with a newline!
-    } deriving (Show)
+    , logstring  :: LogDoc
+    }
 
---instance Show Knowledge where
---  show (Knows ass gen log) = "(Knows : " ++ (show ass) ++ " Currenc gensym: " ++ (show gen) ++ ")"
+instance Show Knowledge where
+  show (Knows a g l) = "\\boxed{\n \\begin{aligned}\n " ++ showAssignment a
+    ++ "\\\\ \n" ++ "&\\textrm{Current Gensym \\#" ++ show g ++ "}\\\\ \n"
+    ++ "\\\\ \n" ++ concatMap (("&\\texttt{" ++) . (++ "}\\\\ \n")) (lines l)
+    ++ "\\end{aligned}\n}"
 
 ignorance = Knows [] 0 "Starting from ignorance;\n"
 
@@ -142,11 +146,20 @@ data InferenceRule
   = Rule 
       { premises   :: [Judgment {- with meta-variable -}]
       , conclusion ::  Judgment {- with meta-variable -}
-      } deriving (Show)  -- TODO Pretty printing
+      , name :: String
+      }
+
+instance Show InferenceRule where
+  show (Rule prems concl name) = "\\frac{\\displaystyle" ++
+    intercalate "\\quad " (map show prems)
+    ++ "}{\\displaystyle" ++
+    show concl
+    ++ "}" ++ "\\textsc{" ++ name ++ "}"
+
 
 freeMetaVarInf r = freeMetaVar (conclusion r) ++ concatMap freeMetaVar (premises r)
 metaSubstituteInf r subs = Rule (map (`metaSubstitute` subs) (premises r))
-  ((conclusion r) `metaSubstitute` subs)
+  ((conclusion r) `metaSubstitute` subs) (name r)
 
 metaSubstituteInfFromState :: InferenceRule -> State InferenceRule
 metaSubstituteInfFromState expr = do
@@ -158,7 +171,11 @@ data Derivation
       { rule          :: InferenceRule
       , derivePremise :: [Derivation {- without meta-variable -}]
       , judgment      :: Judgment    {- without meta-variable -}
-      } deriving (Show)
+      }
+
+instance Show Derivation where
+  show (Derivation rule prem judg) = "{\\frac{\\displaystyle{" ++ intercalate "\\quad " (map show prem) ++ "}}{" ++
+    (show judg) ++ "}" ++ ("\\textsc{" ++ name rule ++ "}") ++ "}"
 
 metaSubstituteDer :: Derivation -> Assignment -> Derivation
 metaSubstituteDer (Derivation r ds j) subs =

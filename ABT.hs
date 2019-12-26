@@ -19,7 +19,7 @@ type Assignment = [(MetaName, ABT)]
 data MetaName = Meta String Int deriving (Eq)
 
 instance Show MetaName where
-  show (Meta s i) = s ++ show i
+  show (Meta s i) = s ++ "_{" ++ show i ++ "}"
 
 data ABT
   = Var VarName
@@ -33,12 +33,12 @@ data ABT
 -- TODO Also we can implement the 'sort' of nodes.
 -- TODO Pretty print
 instance Show ABT where
-  show (Var n)          = show n
-  show (Node name [])   = name
-  show (Node name abts) = '(' : name ++ concatMap ((' ' :) . show) abts ++ ")"
+  show (Var n)          = "\\mathtt{v}_{" ++ show n ++ "}"
+  show (Node name [])   = '\\' : name
+  show (Node name abts) = '\\' : name ++ concatMap (('{' :) . (++ "}") . show) abts
   show (Bind e)         = '.' : show e
   show (MetaVar s (Shift 0)) = '?' : (show s)
-  show (MetaVar s c)         = '?' : (show s) ++ '[' : show c ++ "]"
+  show (MetaVar s c)         = '?' : (show s) ++ "\\left[" ++ show c ++ "\\right]"
 
 data Substitution
   = Shift Int
@@ -46,7 +46,7 @@ data Substitution
   deriving (Eq)
 
 instance Show Substitution where
-  show (Shift k) = '^' : show k
+  show (Shift k) = "\\uparrow^{" ++ show k ++ "}"
   show (Dot e s) = show e ++ " . " ++ show s
 
 compose :: Substitution -> Substitution -> Substitution

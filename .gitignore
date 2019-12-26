@@ -109,3 +109,7 @@ venv.bak/
 .vscode/
 *.o
 *.hi
+*.aux
+*.pdf
+*.synctex.gz
+*.log

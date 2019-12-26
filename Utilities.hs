@@ -4,6 +4,7 @@ module Utilities
   , substituteEqs
   , freeMetaVarEqs
   , justMetaVar
+  , showAssignment
   ) where
 
 import           Control.Monad (foldM, join, liftM2, mapM, liftM)
@@ -43,3 +44,8 @@ freeMetaVarEqs = concatMap helper
 
 justMetaVar :: String -> ABT
 justMetaVar s = MetaVar (Meta s 0) (Shift 0)
+
+showAssignment :: Assignment -> String
+showAssignment = concatMap showOne
+  where showOne :: (MetaName, ABT) -> String
+        showOne (n, e) = show n ++ "& \\leftarrow " ++ show e ++ "\\\\ \n "

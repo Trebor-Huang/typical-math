@@ -40,7 +40,7 @@ checkDerivation d = case runState (checkDerivation_ d) ignorance of
 
 
 tryInferWithRule :: Judgment -> InferenceRule -> State [Judgment]
-j `tryInferWithRule` (Rule prems concl) = do
+j `tryInferWithRule` (Rule prems concl name) = do
   mergeMatch (unify [(j, concl)])
   mapM metaSubstituteFromState prems
 
