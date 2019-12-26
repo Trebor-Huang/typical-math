@@ -4,7 +4,7 @@ module Bidirectional
   , Derivation(..)
   , checkDerivation
   , inferWith
-  , inferWith_  -- facilates debug process
+  , inferWithLog  -- facilates debug process
   ) where
 
 import           ABT
@@ -61,8 +61,9 @@ inferGoals (j:js) rules = do
 inferWith_ :: Judgment -> [InferenceRule] -> StateBacktrack Derivation
 inferWith_ j rules = do
   r <- caseSplit rules  -- use of the backtracking functionality
+  liftBacktrack $ writeLog $ "Tries to use rule: $" ++ show r ++ "$\n"
   r <- liftBacktrack $ getFresh r  -- avoids clash
-  liftBacktrack $ writeLog $ "Tries to use rule: " ++ show r ++ "\n"
+  liftBacktrack $ writeLog $ "Tries to use fresh rule: $" ++ show r ++ "$\n"
   goals <- liftBacktrack $ j `tryInferWithRule` r
   goalDerivations <- inferGoals goals rules
   j <- liftBacktrack $ metaSubstituteFromState j
@@ -71,4 +72,9 @@ inferWith_ j rules = do
 inferWith :: Judgment -> [InferenceRule] -> Maybe Derivation
 j `inferWith` rules = case [ x | (Just x, kn) <- runStateBacktrack (j `inferWith_` rules) ignorance] of
   (d: ds) -> Just d  -- Hm. Should we throw error on non-singletons?
+  []      -> Nothing
+
+inferWithLog :: Judgment -> [InferenceRule] -> Maybe (Derivation, Knowledge)
+j `inferWithLog` rules = case [ (x, kn) | (Just x, kn) <- runStateBacktrack (j `inferWith_` rules) ignorance] of
+  ((d, kn): ds) -> Just (d, kn)  -- Hm. Should we throw error on non-singletons?
   []      -> Nothing

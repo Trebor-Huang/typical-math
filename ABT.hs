@@ -12,6 +12,8 @@ module ABT
   , Assignment
   ) where
 
+import           Data.List           (intercalate, nub)
+
 type VarName = Int
 type NodeType = String
 type Assignment = [(MetaName, ABT)]
@@ -71,15 +73,15 @@ beta _         _  = error "beta is for Bind only."
 
 metaSubstitute :: ABT -> Assignment -> ABT
 metaSubstitute p [] = p
-metaSubstitute m@(MetaVar n s) ((n', e):_)
+metaSubstitute m@(MetaVar n s) ((n', e): ss)
   | n == n'   = substitute e s
-  | otherwise = m
+  | otherwise = metaSubstitute m ss
 metaSubstitute v@(Var _)      _     = v
 metaSubstitute (Node nt abts) msubs = Node nt (map (`metaSubstitute` msubs) abts)
 metaSubstitute (Bind abt)     msubs = Bind (metaSubstitute abt msubs)
 
 freeMetaVar :: ABT -> [ABT]
 freeMetaVar (Var _) = []
-freeMetaVar (Node _ abts) = concatMap freeMetaVar abts
+freeMetaVar (Node _ abts) = nub $ concatMap freeMetaVar abts
 freeMetaVar (Bind abt) = freeMetaVar abt
 freeMetaVar m@(MetaVar _ _) = [m]

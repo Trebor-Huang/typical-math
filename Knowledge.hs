@@ -3,7 +3,7 @@ module Knowledge where
 import           ABT
 import           Control.Applicative (Applicative (..))
 import           Control.Monad       (ap, liftM, join, mapM_, mapM)
-import           Data.List           (intercalate)
+import           Data.List           (intercalate, nub)
 import           Match               (match, unify)
 import           Utilities
 
@@ -150,14 +150,14 @@ data InferenceRule
       }
 
 instance Show InferenceRule where
-  show (Rule prems concl name) = "\\frac{\\displaystyle" ++
+  show (Rule prems concl name) = "\\frac{\\displaystyle{" ++
     intercalate "\\quad " (map show prems)
-    ++ "}{\\displaystyle" ++
+    ++ "}}{\\displaystyle{" ++
     show concl
-    ++ "}" ++ "\\textsc{" ++ name ++ "}"
+    ++ "}}" ++ "\\textsc{" ++ name ++ "}"
 
 
-freeMetaVarInf r = freeMetaVar (conclusion r) ++ concatMap freeMetaVar (premises r)
+freeMetaVarInf r = nub $ freeMetaVar (conclusion r) ++ concatMap freeMetaVar (premises r)
 metaSubstituteInf r subs = Rule (map (`metaSubstitute` subs) (premises r))
   ((conclusion r) `metaSubstitute` subs) (name r)
 
@@ -190,11 +190,12 @@ getFresh :: InferenceRule -> State InferenceRule
 getFresh inf = do
   incGensym
   g <- getGensym
+  writeLog $ "Current gensym: " ++ show g ++ "\n"
   return $ refresh g inf
 
 refresh :: Int -> InferenceRule -> InferenceRule
 refresh gen inf = inf `metaSubstituteInf`
-  map (\(MetaVar (Meta n i) _) -> ((Meta n i), MetaVar (Meta n gen) (Shift 0)))
+  map (\(MetaVar (Meta n i) (Shift 0)) -> ((Meta n i), MetaVar (Meta n gen) (Shift 0)))
     (freeMetaVarInf inf)
 
 -- Actually there is no backtracking happening here
