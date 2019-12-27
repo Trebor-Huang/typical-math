@@ -69,13 +69,22 @@ substitute (MetaVar n c) s = MetaVar n (compose s c)
 beta :: ABT -> ABT -> ABT
 -- aux function for Bind's beta reduction
 beta (Bind e1) e2 = substitute e1 (Dot e2 (Shift 0))
-beta _         _  = error "beta is for Bind only."
+beta x         y  = error $ "beta is for Bind only." ++ show x ++ show y
 
 metaSubstitute :: ABT -> Assignment -> ABT
 metaSubstitute p [] = p
-metaSubstitute m@(MetaVar n s) ((n', e): ss)
-  | n == n'   = substitute e s
-  | otherwise = metaSubstitute m ss
+metaSubstitute m@(MetaVar n s) msubs = case dict n msubs of
+  Just e  -> substitute e s
+  Nothing -> MetaVar n (msc s msubs)
+  where msc :: Substitution -> Assignment -> Substitution
+        msc (Shift n) _   = Shift n
+        msc (Dot e t) ass = Dot (metaSubstitute e ass) (msc t ass)
+
+        dict :: (Eq a) => a -> [(a, b)] -> Maybe b
+        dict _ [] = Nothing
+        dict a ((a', b) : ls)
+          | a == a'   = Just b
+          | otherwise = dict a ls
 metaSubstitute v@(Var _)      _     = v
 metaSubstitute (Node nt abts) msubs = Node nt (map (`metaSubstitute` msubs) abts)
 metaSubstitute (Bind abt)     msubs = Bind (metaSubstitute abt msubs)

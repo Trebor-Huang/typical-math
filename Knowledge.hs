@@ -26,7 +26,7 @@ data Knowledge = Knows
 instance Show Knowledge where
   show (Knows a g l) = "\\boxed{\n \\begin{aligned}\n " ++ showAssignment a
     ++ "\\\\ \n" ++ "&\\textrm{Current Gensym \\#" ++ show g ++ "}\\\\ \n"
-    ++ "\\\\ \n" ++ concatMap (("&\\texttt{" ++) . (++ "}\\\\ \n")) (lines l)
+    ++ "\\\\ \n" ++ concatMap (("&\\textrm{" ++) . (++ "}\\\\ \n")) (lines l)
     ++ "\\end{aligned}\n}"
 
 ignorance = Knows [] 0 "Starting from ignorance;\n"
@@ -154,7 +154,7 @@ instance Show InferenceRule where
     intercalate "\\quad " (map show prems)
     ++ "}}{\\displaystyle{" ++
     show concl
-    ++ "}}" ++ "\\textsc{" ++ name ++ "}"
+    ++ "}}" ++ "\\textsc{\\tiny " ++ name ++ "}"
 
 
 freeMetaVarInf r = nub $ freeMetaVar (conclusion r) ++ concatMap freeMetaVar (premises r)
@@ -175,7 +175,7 @@ data Derivation
 
 instance Show Derivation where
   show (Derivation rule prem judg) = "{\\frac{\\displaystyle{" ++ intercalate "\\quad " (map show prem) ++ "}}{" ++
-    (show judg) ++ "}" ++ ("\\textsc{" ++ name rule ++ "}") ++ "}"
+    (show judg) ++ "}" ++ ("\\textsc{\\tiny " ++ name rule ++ "}") ++ "}"
 
 metaSubstituteDer :: Derivation -> Assignment -> Derivation
 metaSubstituteDer (Derivation r ds j) subs =

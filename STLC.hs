@@ -5,12 +5,12 @@ import ABT
 import Utilities
 import Bidirectional
 
-[x, y, g, a, b, m, n] = map justMetaVar ["x", "y", "Γ", "A", "B", "M", "N"]
+[x, y, g, a, b, m, n] = map justMetaVar ["x", "y", "\\Gamma", "A", "B", "M", "N"]
 
 empty = Node "emptyctx" []
 -- \newcommand{\emptyctx}{*}
-cons ts x t = Node "consctx" [ts, x, t]
--- \newcommand{\consctx}[3]{#1 , #2 {:} #3}
+cons ts t = Node "consctx" [ts, t]
+-- \newcommand{\consctx}[3]{#1 , #2}
 
 variable = Node "star" [] -- no need for newcommand
 apostrophe x = Node "apostr" [x]
@@ -20,48 +20,58 @@ ctx g = Node "ctx" [g]
 -- \newcommand{\ctx}[1]{#1 \ \mathsf{ctx}}
 tp t = Node "type" [t]
 -- \newcommand{\type}[1]{#1 \ \mathsf{type}}
+var t = Node "var" [t]
+-- \newcommand{\var}[1]{#1 \ \mathsf{var}}
+
+varVar = Rule [] (var variable) "Var-Var"
+varApo = Rule [var x] (var (apostrophe x)) "Var-Apo"
 
 emptyCtx = Rule [] (ctx empty) "Ctx-Empty"
-consCtx  = Rule [ctx g, tp a, isfresh g x] (ctx (cons g x a)) "Ctx-Cons"
+consCtx  = Rule [ctx g, tp a] (ctx (cons g a)) "Ctx-Cons"
 
 lkup  g v t = Node "lookup" [g, v, t]
 -- \newcommand{\lookup}[3]{#1 \vdash #2 \mathbf{lookup} \rightsquigarrow #3}
-lookupStop = Rule [ctx (cons g x a)] (lkup (cons g x a) x a) "Lookup-Stop"
-lookupPop  = Rule [lkup g y b] (lkup (cons g x a) y b) "Lookup-Pop"
+lookupStop = Rule [ctx (cons g a), fresh g x] (lkup (cons g a) x a) "Lookup-Stop"
+lookupPop  = Rule [lkup g y b] (lkup (cons g a) y b) "Lookup-Pop"
 
 synth g e t = Node "synth"  [g, e, t]
 -- \newcommand{\synth}[3]{#1 \vdash #2 \mathbf{synth} \rightsquigarrow #3}
 check g e t = Node "checkj"  [g, e, t]
 -- \newcommand{\checkj}[3]{#1 \vdash \mathbf{check} #2 : #3}
-fresh g v x = Node "fresh"  [g, v, x]
+varSynth = Rule [lkup g x a] (synth g x a) "Var-Synth"
+varCheck = Rule [lkup g x a] (check g x a) "Var-Check"
+appSynth = Rule [synth g n b, check g m (to b a)] (synth g (app m n) a) "App-Synth"
+appCheck = Rule [synth g m (to b a), check g n b] (check g (app m n) a) "App-Check"
+absSynth = Rule [fresh g x, synth (cons g a) (beta (Bind m) x) b]
+                    (synth g (Node "abstraction" [a, Bind m]) (to a b)) "Abs-Synth"
+absCheck = Rule [fresh g x, check (cons g a) (beta (Bind m) x) b]
+                    (check g (Node "abstraction" [a, Bind m]) (to a b)) "Abs-Check"
+normalize g e t n = Node "normalizes" [g, e, t, n]
+-- \newcommand{\normalizes}[4]{#1 \vdash #2 \rightsquigarrow_\beta^{#3} #4}
+-- TODO
+
+fresh g x = Node "fresh"  [g, x]
 -- \newcommand{\fresh}[3]{#1 \vdash #2 \mathbf{fresh} \rightsquigarrow #3}
-justFresh = Rule [isfresh g x] (fresh g x x) "JustFresh"
-reFresh   = Rule [fresh g (apostrophe x) y] (fresh g x y) "Refresh"
+justFresh = Rule [] (fresh empty variable) "JustFresh"
+reFresh   = Rule [tp a, fresh g x] (fresh (cons g a) (apostrophe x)) "Refresh"
 
-isfresh g v = Node "isfresh" [g, v]
--- \newcommand{\isfresh}[2]{#1 \vdash #2 \mathbf{fresh}}
-emptyFresh = Rule [] (isfresh empty x) "Empty-Fresh"
-consFresh  = Rule [isfresh g x, differs x y] (isfresh (cons g y b) x) "Cons-Fresh"
-
-differs x y = Node "differs" [x, y]
--- \newcommand{\differs}[2]{#1 \# #2}
-differsSL = Rule [] (differs variable (apostrophe x)) "Differ-Left"
-differsSR = Rule [] (differs (apostrophe x) variable) "Differ-Right"
-differsS  = Rule [differs x y] (differs (apostrophe x) (apostrophe y)) "Differ-Step"
-
-lam t e = Node "lambda" [t, Bind e]  -- no new command needed
+lam t e = Node "abstraction" [t, Bind e]  -- no new command needed
+-- \newcommand{\abstraction}[2]{(\lambda^{#1}. #2)}
 app e f = Node "application" [e, f]
 -- \newcommand{\application}[2]{(#1\ #2)}
 
 true = Node "true" []
 -- \newcommand{\true}{\mathrm{T}}
+trueBool = Rule [ctx g] (synth g true bool) "True-Bool"
 false = Node "false" []
 -- \newcommand{\false}{\mathrm{F}}
+falseBool = Rule [ctx g] (synth g false bool) "False-Bool"
 sole = Node "sole" []
 -- \newcommand{\sole}{\mathrm{i}}
+soleOne = Rule [ctx g] (synth g sole one) "Sole-One"
 
 to a b = Node "To" [a, b]
--- \newcommand{\To}[2]{#1 \to #2}
+-- \newcommand{\To}[2]{(#1 \to #2)}
 bool = Node "Bool" []
 -- \newcommand{\Bool}{\mathbb{B}}
 one = Node "One" []
@@ -70,7 +80,43 @@ boolType = Rule [] (tp bool) "Bool-Form"
 oneType  = Rule [] (tp one)  "One-Form"
 toType   = Rule [tp a, tp b] (tp (a `to` b)) "To-Form"
 
-rules = [emptyCtx, consCtx, lookupPop, lookupStop, justFresh, reFresh, emptyFresh, consFresh,
-  differsS, differsSL, differsSR, boolType, oneType, toType]
+rules = [justFresh, reFresh,
+  emptyCtx, consCtx,
+  lookupStop, lookupPop,
+  boolType, oneType, toType,
+  varVar, varApo, varCheck, varSynth, appCheck, appSynth, absCheck, absSynth,
+  trueBool, falseBool, soleOne]
 
-differ1 = (differs (apostrophe $ apostrophe variable) (apostrophe variable)) `inferWithLog` rules
+test2 = (ctx (cons 
+      (cons empty (to one one))
+      (to (to bool one) bool)
+    )
+  ) `inferWithLog` rules
+test3 = 
+  (lkup 
+    (cons
+      (cons
+        (cons empty bool)
+        one)
+      (to (to bool bool) bool))
+    (apostrophe variable)
+    a) `inferWithLog` rules
+test4 =
+  (synth
+    empty
+    (lam bool (Var 0))
+    a) `inferWithLog` rules
+test5 =
+  (synth
+    empty
+    (lam bool 
+      (lam (to bool bool) 
+        (lam one 
+          (app
+            (app (Var 2) (Var 0))
+            (app (Var 1) (Var 0))  -- \x -> \y -> \z -> (x z) (y z)
+          ))))
+    a) `inferWith` rules  -- Bug here! the program begins infinite loop
+
+main :: IO()
+main = putStrLn $ show test5

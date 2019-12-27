@@ -10,6 +10,7 @@ module Bidirectional
 import           ABT
 import           Control.Applicative (Applicative (..))
 import           Control.Monad       (ap, liftM, join, mapM_, mapM)
+import           Data.List           (intercalate)
 import           Match               (match, unify)
 import           Utilities
 import           Knowledge
@@ -60,6 +61,7 @@ inferGoals (j:js) rules = do
 
 inferWith_ :: Judgment -> [InferenceRule] -> StateBacktrack Derivation
 inferWith_ j rules = do
+  liftBacktrack $ writeLog $ "Current Goal: $" ++ show j ++ "$\n"
   r <- caseSplit rules  -- use of the backtracking functionality
   liftBacktrack $ writeLog $ "Tries to use rule: $" ++ show r ++ "$\n"
   r <- liftBacktrack $ getFresh r  -- avoids clash
@@ -74,7 +76,7 @@ j `inferWith` rules = case [ x | (Just x, kn) <- runStateBacktrack (j `inferWith
   (d: ds) -> Just d  -- Hm. Should we throw error on non-singletons?
   []      -> Nothing
 
-inferWithLog :: Judgment -> [InferenceRule] -> Maybe (Derivation, Knowledge)
-j `inferWithLog` rules = case [ (x, kn) | (Just x, kn) <- runStateBacktrack (j `inferWith_` rules) ignorance] of
-  ((d, kn): ds) -> Just (d, kn)  -- Hm. Should we throw error on non-singletons?
-  []      -> Nothing
+inferWithLog :: Judgment -> [InferenceRule] -> String
+j `inferWithLog` rules = intercalate "\n\nNext case:\n" $ map helper $ runStateBacktrack (j `inferWith_` rules) ignorance
+  where helper (Just d,  kn) = "Succeeded with tree $$" ++ show d ++ "$$ and logstring $$" ++ show kn ++ "$$\n\n"
+        helper (Nothing, kn) = "Failed with logstring $$" ++ show kn ++ "$$\n\n"
