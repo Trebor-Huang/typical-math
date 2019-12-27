@@ -105,11 +105,11 @@ test4 =
   (synth
     empty
     (lam bool (Var 0))
-    a) `inferWithLog` rules
+    a) `inferWith` rules
 test5 =
   (synth
     empty
-    (lam bool 
+    (lam (to one (to bool bool)) 
       (lam (to bool bool) 
         (lam one 
           (app

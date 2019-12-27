@@ -8,7 +8,7 @@ module Utilities
   ) where
 
 import           Control.Monad (foldM, join, liftM2, mapM, liftM)
-import           ABT (MetaName(..), ABT(..), Substitution(..), metaSubstitute, freeMetaVar, Assignment)
+import           ABT
 
 -- utilities
 mergeAssoc :: Assignment -> Assignment -> Maybe Assignment
@@ -38,9 +38,9 @@ substituteSubs s subs =
 metaSubstituteCompose = flip substituteSubs
 
 freeMetaVarEqs :: [(ABT, ABT)] -> [ABT]
-freeMetaVarEqs = concatMap helper
+freeMetaVarEqs = nubMetaVar . concatMap helper
   where helper :: (ABT, ABT) -> [ABT]
-        helper (e1, e2) = (freeMetaVar e1) ++ (freeMetaVar e2)
+        helper (e1, e2) = nubMetaVar $ (freeMetaVar e1) ++ (freeMetaVar e2)
 
 justMetaVar :: String -> ABT
 justMetaVar s = MetaVar (Meta s 0) (Shift 0)

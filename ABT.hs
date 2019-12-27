@@ -10,9 +10,10 @@ module ABT
   , metaSubstitute
   , freeMetaVar
   , Assignment
+  , nubMetaVar
   ) where
 
-import           Data.List           (intercalate, nub)
+import           Data.List           (intercalate, groupBy, sortBy)
 
 type VarName = Int
 type NodeType = String
@@ -74,7 +75,7 @@ beta x         y  = error $ "beta is for Bind only." ++ show x ++ show y
 metaSubstitute :: ABT -> Assignment -> ABT
 metaSubstitute p [] = p
 metaSubstitute m@(MetaVar n s) msubs = case dict n msubs of
-  Just e  -> substitute e s
+  Just e  -> substitute e (msc s msubs) -- This is supposed to be simultaneous..?
   Nothing -> MetaVar n (msc s msubs)
   where msc :: Substitution -> Assignment -> Substitution
         msc (Shift n) _   = Shift n
@@ -89,8 +90,23 @@ metaSubstitute v@(Var _)      _     = v
 metaSubstitute (Node nt abts) msubs = Node nt (map (`metaSubstitute` msubs) abts)
 metaSubstitute (Bind abt)     msubs = Bind (metaSubstitute abt msubs)
 
+nubMetaVar :: [ABT] -> [ABT]
+nubMetaVar vs = map pick $ groupBy nameEq vs
+  where nameEq :: ABT -> ABT -> Bool
+        nameEq (MetaVar n _) (MetaVar m _) = n == m
+        nameEq _ _ = error "Panic! Non-meta-vars appeared at strange places!"
+        helperOrder :: ABT -> ABT -> Ordering
+        helperOrder (MetaVar _ (Shift 0)) (MetaVar _ (Shift 0)) = EQ
+        helperOrder (MetaVar _ _) (MetaVar _ (Shift 0)) = LT
+        helperOrder (MetaVar _ (Shift 0)) (MetaVar _ _) = GT
+        helperOrder e f | e == f = EQ
+                        | otherwise = error $ "Panic! Meta-vars with closures clashed, giving up on:\n    "
+                          ++ show e ++ "\n  and\n    " ++ show f
+        pick :: [ABT] -> ABT
+        pick ls = head $ sortBy helperOrder ls
+
 freeMetaVar :: ABT -> [ABT]
 freeMetaVar (Var _) = []
-freeMetaVar (Node _ abts) = nub $ concatMap freeMetaVar abts
+freeMetaVar (Node _ abts) = nubMetaVar $ concatMap freeMetaVar abts
 freeMetaVar (Bind abt) = freeMetaVar abt
 freeMetaVar m@(MetaVar _ _) = [m]
