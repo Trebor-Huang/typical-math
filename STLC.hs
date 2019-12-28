@@ -5,16 +5,16 @@ import ABT
 import Utilities
 import Bidirectional
 
-[x, y, g, a, b, m, n] = map justMetaVar ["x", "y", "\\Gamma", "A", "B", "M", "N"]
+[x, y, g, a, b, m, n, e] = map justMetaVar ["x", "y", "\\Gamma", "A", "B", "M", "N", "E"]
 
 empty = Node "emptyctx" []
 -- \newcommand{\emptyctx}{*}
 cons ts t = Node "consctx" [ts, t]
--- \newcommand{\consctx}[3]{#1 , #2}
+-- \newcommand{\consctx}[3]{{#1 , #2}}
 
 variable = Node "star" [] -- no need for newcommand
 apostrophe x = Node "apostr" [x]
--- \newcommand{\apostr}[1] {#1'}
+-- \newcommand{\apostr}[1] {{#1'}}
 
 ctx g = Node "ctx" [g]
 -- \newcommand{\ctx}[1]{#1 \ \mathsf{ctx}}
@@ -48,14 +48,23 @@ absCheck = Rule [fresh g x, check (cons g a) (beta (Bind m) x) b]
                     (check g (Node "abstraction" [a, Bind m]) (to a b)) "Abs-Check"
 normalize g e t n = Node "normalizes" [g, e, t, n]
 -- \newcommand{\normalizes}[4]{#1 \vdash #2 \rightsquigarrow_\beta^{#3} #4}
--- TODO
+normBeta = Rule [check g (app (lam a m) n) b, normalize g (beta (Bind m) n) b e]
+  (normalize g (app (lam a m) n) b e) "Beta"
+normAppL = Rule [check g (app m n) a, synth g n b, normalize g m (to b a) e]
+  (normalize g (app m n) a (app e n)) "Beta-AppL"
+normAppR = Rule [check g (app m n) a, synth g m (to a b), normalize g n b e]
+  (normalize g (app m n) a (app m e)) "Beta-AppR"
+normLam = Rule [fresh g x,
+  check (cons g a) (beta (Bind m) x) b,
+  normalize (cons g a) (beta (Bind m) x) b n]
+  (normalize g (lam a m) (to a b) (lam a n)) "Beta-Lambda"
 
 fresh g x = Node "fresh"  [g, x]
--- \newcommand{\fresh}[3]{#1 \vdash #2 \mathbf{fresh} \rightsquigarrow #3}
+-- \newcommand{\fresh}[2]{#1 \vdash \mathbf{fresh} \rightsquigarrow #2}
 justFresh = Rule [] (fresh empty variable) "JustFresh"
 reFresh   = Rule [tp a, fresh g x] (fresh (cons g a) (apostrophe x)) "Refresh"
 
-lam t e = Node "abstraction" [t, Bind e]  -- no new command needed
+lam t e = Node "abstraction" [t, Bind e]
 -- \newcommand{\abstraction}[2]{(\lambda^{#1}. #2)}
 app e f = Node "application" [e, f]
 -- \newcommand{\application}[2]{(#1\ #2)}
@@ -69,13 +78,16 @@ falseBool = Rule [ctx g] (synth g false bool) "False-Bool"
 sole = Node "sole" []
 -- \newcommand{\sole}{\mathrm{i}}
 soleOne = Rule [ctx g] (synth g sole one) "Sole-One"
+checkSynth = Rule [synth g a b] (check g a b) "Switch"
+
+stuck = Rule [check g e a] (normalize g e a e) "Stuck"
 
 to a b = Node "To" [a, b]
 -- \newcommand{\To}[2]{(#1 \to #2)}
 bool = Node "Bool" []
 -- \newcommand{\Bool}{\mathbb{B}}
 one = Node "One" []
--- \newcommand{\One}{\mathbf 1}
+-- \newcommand{\One}{\mathbf{1}}
 boolType = Rule [] (tp bool) "Bool-Form"
 oneType  = Rule [] (tp one)  "One-Form"
 toType   = Rule [tp a, tp b] (tp (a `to` b)) "To-Form"
@@ -84,8 +96,10 @@ rules = [justFresh, reFresh,
   emptyCtx, consCtx,
   lookupStop, lookupPop,
   boolType, oneType, toType,
-  varVar, varApo, varCheck, varSynth, appCheck, appSynth, absCheck, absSynth,
-  trueBool, falseBool, soleOne]
+  varVar, varApo, varCheck, varSynth, appCheck, appSynth, absCheck, absSynth, checkSynth,
+  trueBool, falseBool, soleOne,
+  normBeta, normAppL, normAppR, normLam,
+  stuck]
 
 test2 = (ctx (cons 
       (cons empty (to one one))
@@ -118,5 +132,7 @@ test5 =
           ))))
     a) `inferWith` rules
 
+test6 = (normalize empty (app (lam bool (Var 0)) true) bool e) `inferWith` rules
+
 main :: IO()
-main = putStrLn $ show test5
+main = putStrLn $ show test6
