@@ -4,6 +4,7 @@ import ABT
 import Match
 import Utilities
 import Bidirectional
+import Knowledge
 
 k = Node "λ" [Bind $ Node "λ" [Bind $ Var 1]]
 
@@ -32,3 +33,6 @@ sszNat = Derivation sNat
 
 Just sszNat_auto = (isNat (s (s z))) `inferWith` [zNat, sNat]
 result = checkDerivation sszNat
+
+---------- Test for meta-substitution with closures
+expr = substitute x (Shift 2)

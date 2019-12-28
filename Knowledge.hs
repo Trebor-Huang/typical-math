@@ -8,9 +8,6 @@ import           Match               (match, unify)
 import           Utilities
 
 -- This module defines the necessary data structures for Bidirectional.hs
-
--- TODO refactor the system so that it is more easily extensible
-
 -- The idea is that knowledge of the assignment of meta-variables,
 -- and, by the way, the uuid stuff is carried through the derivation
 -- process, and thus has a monadic feature. So we can easily add a log

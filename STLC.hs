@@ -110,13 +110,13 @@ test5 =
   (synth
     empty
     (lam (to one (to bool bool)) 
-      (lam (to bool bool) 
+      (lam (to one bool) 
         (lam one 
           (app
             (app (Var 2) (Var 0))
             (app (Var 1) (Var 0))  -- \x -> \y -> \z -> (x z) (y z)
           ))))
-    a) `inferWith` rules  -- Bug here! the program begins infinite loop
+    a) `inferWith` rules
 
 main :: IO()
 main = putStrLn $ show test5
