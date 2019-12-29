@@ -1,0 +1,179 @@
+\documentclass{article}
+\usepackage[a0paper, landscape]{geometry}
+\usepackage{amssymb}
+\usepackage{amsmath}
+
+\newcommand{\emptyctx}{*}
+\newcommand{\ifthenelse}[3]{(\texttt{if } #1 \texttt{ then } #2 \texttt{ else } #3)}
+\newcommand{\consctx}[2]{{#1 , #2}}
+\newcommand{\apostr}[1] {{#1'}}
+\newcommand{\ctx}[1]{#1 \ \mathsf{ctx}}
+\newcommand{\type}[1]{#1 \ \mathsf{type}}
+\newcommand{\var}[1]{#1 \ \mathsf{var}}
+\newcommand{\lookup}[3]{#1 \vdash\, #2 \mathbf{lookup} \rightsquigarrow #3}
+\newcommand{\synth}[3]{#1 \vdash\, #2 \mathbf{synth} \rightsquigarrow #3}
+\newcommand{\checkj}[3]{#1 \vdash \mathbf{check}\, #2 : #3}
+\newcommand{\normalizes}[4]{#1 \vdash\, #2 \rightsquigarrow_\beta^{#3} #4}
+\newcommand{\fresh}[2]{#1 \vdash \mathbf{fresh} \rightsquigarrow #2}
+\newcommand{\abstraction}[2]{(\lambda^{#1} #2)}
+\newcommand{\application}[2]{(#1\ #2)}
+\newcommand{\true}{\mathrm{T}}
+\newcommand{\false}{\mathrm{F}}
+\newcommand{\sole}{\mathrm{i}}
+\newcommand{\To}[2]{(#1 \to #2)}
+\newcommand{\Bool}{\mathbb{B}}
+\newcommand{\One}{\mathbf{1}}
+
+\begin{document}
+Hello!
+$$
+{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\fresh{\emptyctx}{\star}}\vphantom{ JustFresh}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}\quad {
+\frac{\displaystyle{}}
+{\type{\Bool}}\vphantom{ Bool-Form}
+}}}
+{\ctx{\consctx{\emptyctx}{\Bool}}}\vphantom{ Ctx-Cons}
+}\quad {
+\frac{\displaystyle{}}
+{\fresh{\emptyctx}{\star}}\vphantom{ JustFresh}
+}}}
+{\lookup{\consctx{\emptyctx}{\Bool}}{\star}{\Bool}}\vphantom{ Lookup-Stop}
+}}}
+{\checkj{\consctx{\emptyctx}{\Bool}}{\star}{\Bool}}\vphantom{ Var-Check}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}\quad {
+\frac{\displaystyle{}}
+{\type{\Bool}}\vphantom{ Bool-Form}
+}}}
+{\ctx{\consctx{\emptyctx}{\Bool}}}\vphantom{ Ctx-Cons}
+}}}
+{\synth{\consctx{\emptyctx}{\Bool}}{\false}{\Bool}}\vphantom{ False-Bool}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}\quad {
+\frac{\displaystyle{}}
+{\type{\Bool}}\vphantom{ Bool-Form}
+}}}
+{\ctx{\consctx{\emptyctx}{\Bool}}}\vphantom{ Ctx-Cons}
+}}}
+{\synth{\consctx{\emptyctx}{\Bool}}{\true}{\Bool}}\vphantom{ True-Bool}
+}}}
+{\checkj{\consctx{\emptyctx}{\Bool}}{\true}{\Bool}}\vphantom{ Switch}
+}}}
+{\synth{\consctx{\emptyctx}{\Bool}}{\ifthenelse{\star}{\false}{\true}}{\Bool}}\vphantom{ If-Synth}
+}}}
+{\synth{\emptyctx}{\abstraction{\Bool}{.\ifthenelse{\mathtt{v}_{0}}{\false}{\true}}}{\To{\Bool}{\Bool}}}\vphantom{ Abs-Synth}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}}}
+{\synth{\emptyctx}{\false}{\Bool}}\vphantom{ False-Bool}
+}}}
+{\checkj{\emptyctx}{\false}{\Bool}}\vphantom{ Switch}
+}}}
+{\checkj{\emptyctx}{\application{\abstraction{\Bool}{.\ifthenelse{\mathtt{v}_{0}}{\false}{\true}}}{\false}}{\Bool}}\vphantom{ App-Check}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}}}
+{\synth{\emptyctx}{\false}{\Bool}}\vphantom{ False-Bool}
+}}}
+{\checkj{\emptyctx}{\false}{\Bool}}\vphantom{ Switch}
+}}}
+{\normalizes{\emptyctx}{\false}{\Bool}{\false}}\vphantom{ Normal}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}}}
+{\synth{\emptyctx}{\false}{\Bool}}\vphantom{ False-Bool}
+}}}
+{\checkj{\emptyctx}{\false}{\Bool}}\vphantom{ Switch}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}}}
+{\synth{\emptyctx}{\true}{\Bool}}\vphantom{ True-Bool}
+}}}
+{\checkj{\emptyctx}{\true}{\Bool}}\vphantom{ Switch}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}}}
+{\synth{\emptyctx}{\true}{\Bool}}\vphantom{ True-Bool}
+}}}
+{\checkj{\emptyctx}{\true}{\Bool}}\vphantom{ Switch}
+}}}
+{\normalizes{\emptyctx}{\true}{\Bool}{\true}}\vphantom{ Normal}
+}}}
+{\normalizes{\emptyctx}{\ifthenelse{\false}{\false}{\true}}{\Bool}{\true}}\vphantom{ If-False}
+}}}
+{\normalizes{\emptyctx}{\application{\abstraction{\Bool}{.\ifthenelse{\mathtt{v}_{0}}{\false}{\true}}}{\false}}{\Bool}{\true}}\vphantom{ Beta}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}}}
+{\synth{\emptyctx}{\true}{\Bool}}\vphantom{ True-Bool}
+}}}
+{\checkj{\emptyctx}{\true}{\Bool}}\vphantom{ Switch}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}}}
+{\synth{\emptyctx}{\false}{\Bool}}\vphantom{ False-Bool}
+}}}
+{\checkj{\emptyctx}{\false}{\Bool}}\vphantom{ Switch}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}}}
+{\synth{\emptyctx}{\true}{\Bool}}\vphantom{ True-Bool}
+}}}
+{\checkj{\emptyctx}{\true}{\Bool}}\vphantom{ Switch}
+}}}
+{\normalizes{\emptyctx}{\true}{\Bool}{\true}}\vphantom{ Normal}
+}}}
+{\normalizes{\emptyctx}{\ifthenelse{\application{\abstraction{\Bool}{.\ifthenelse{\mathtt{v}_{0}}{\false}{\true}}}{\false}}{\true}{\false}}{\Bool}{\true}}\vphantom{ If-True}
+}
+$$
+\end{document}
