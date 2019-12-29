@@ -48,4 +48,4 @@ justMetaVar s = MetaVar (Meta s 0) (Shift 0)
 showAssignment :: Assignment -> String
 showAssignment = concatMap showOne
   where showOne :: (MetaName, ABT) -> String
-        showOne (n, e) = show n ++ "& \\leftarrow " ++ show e ++ "\\\\ \n "
+        showOne (n, e) = show n ++ " & \\leftarrow " ++ show e ++ " \\\\ \n "

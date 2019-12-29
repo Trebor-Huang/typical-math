@@ -65,7 +65,7 @@ justFresh = Rule [] (fresh empty variable) "JustFresh"
 reFresh   = Rule [tp a, fresh g x] (fresh (cons g a) (apostrophe x)) "Refresh"
 
 lam t e = Node "abstraction" [t, Bind e]
--- \newcommand{\abstraction}[2]{(\lambda^{#1}. #2)}
+-- \newcommand{\abstraction}[2]{(\lambda^{#1} #2)}
 app e f = Node "application" [e, f]
 -- \newcommand{\application}[2]{(#1\ #2)}
 
@@ -80,7 +80,7 @@ sole = Node "sole" []
 soleOne = Rule [ctx g] (synth g sole one) "Sole-One"
 checkSynth = Rule [synth g a b] (check g a b) "Switch"
 
-stuck = Rule [check g e a] (normalize g e a e) "Stuck"
+normal = Rule [check g e a] (normalize g e a e) "Normal"
 
 to a b = Node "To" [a, b]
 -- \newcommand{\To}[2]{(#1 \to #2)}
@@ -99,7 +99,7 @@ rules = [justFresh, reFresh,
   varVar, varApo, varCheck, varSynth, appCheck, appSynth, absCheck, absSynth, checkSynth,
   trueBool, falseBool, soleOne,
   normBeta, normAppL, normAppR, normLam,
-  stuck]
+  normal]
 
 test2 = (ctx (cons 
       (cons empty (to one one))
@@ -133,6 +133,3 @@ test5 =
     a) `inferWith` rules
 
 test6 = (normalize empty (app (lam bool (Var 0)) true) bool e) `inferWith` rules
-
-main :: IO()
-main = putStrLn $ show test6

@@ -1,4 +1,31 @@
-module Knowledge where
+module Knowledge
+  ( LogDoc
+  , Knowledge(..)
+  , ignorance
+  , State(..)
+  , runState
+  , get
+  , set
+  , withState
+  , getAssignment
+  , getGensym
+  , getFresh
+  , writeLog
+  , panic
+  , mergeMatch
+  , Judgment(..)
+  , Derivation(..)
+  , InferenceRule(..)
+  , metaSubstituteFromState
+  , metaSubstituteDer
+  , metaSubstituteDerFromState
+  , metaSubstituteInf
+  , metaSubstituteInfFromState
+  , StateBacktrack(..)
+  , liftBacktrack
+  , caseSplit
+  , runStateBacktrack
+  ) where
 
 import           ABT
 import           Control.Applicative (Applicative (..))
@@ -22,8 +49,8 @@ data Knowledge = Knows
 
 instance Show Knowledge where
   show (Knows a g l) = "\\boxed{\n \\begin{aligned}\n " ++ showAssignment a
-    ++ "\\\\ \n" ++ "&\\textrm{Current Gensym \\#" ++ show g ++ "}\\\\ \n"
-    ++ "\\\\ \n" ++ concatMap (("&\\textrm{" ++) . (++ "}\\\\ \n")) (lines l)
+    ++ "\\\\ \n" ++ " & \\textrm{Current Gensym is " ++ show g ++ "} \\\\ \n"
+    ++ "\\\\ \n" ++ concatMap ((" & \\textrm{" ++) . (++ "} \\\\ \n")) (lines l)
     ++ "\\end{aligned}\n}"
 
 ignorance = Knows [] 0 "Starting from ignorance;\n"
@@ -56,13 +83,6 @@ get = State (\s -> (Just s, s))
 
 set :: Knowledge -> State ()
 set k = State (\s -> (Just (), k))
-
-mergeState :: Knowledge -> State ()
-mergeState (Knows ass gen log) = State f 
-  where f :: Knowledge -> (Maybe (), Knowledge)
-        f (Knows ass' gen' log') = case (mergeAssoc ass ass') of
-          Just m -> (Just (), (Knows m (max gen gen') (log ++ log')))
-          Nothing -> (Nothing, (Knows [] (max gen gen') (log ++ log' ++ "Merge failed!\n")))
 
 withState :: a -> Knowledge -> State a
 d `withState` s = State (\s -> (Just d, s))
@@ -148,8 +168,8 @@ data InferenceRule
 
 instance Show InferenceRule where
   show (Rule prems concl name) = "\\frac{\\displaystyle{" ++
-    intercalate "\\quad " (map show prems)
-    ++ "}}{\\displaystyle{" ++
+    intercalate "\\quad \n" (map show prems)
+    ++ "}}\n{\\displaystyle{" ++
     show concl
     ++ "}}" ++ "\\textsc{\\tiny " ++ name ++ "}"
 
@@ -171,8 +191,8 @@ data Derivation
       }
 
 instance Show Derivation where
-  show (Derivation rule prem judg) = "{\\frac{\\displaystyle{" ++ intercalate "\\quad " (map show prem) ++ "}}{" ++
-    (show judg) ++ "}" ++ ("\\textsc{\\tiny " ++ name rule ++ "}") ++ "}"
+  show (Derivation rule prem judg) = "{\n\\frac{\\displaystyle{" ++ intercalate "\\quad " (map show prem) ++ "}}\n{" ++
+    (show judg) ++ "}" ++ ("\\vphantom{ " ++ name rule ++ "}") ++ "\n}"  -- change \vphantom to \textsc{\tiny} if needed
 
 metaSubstituteDer :: Derivation -> Assignment -> Derivation
 metaSubstituteDer (Derivation r ds j) subs =
@@ -188,7 +208,7 @@ getFresh inf = do
   incGensym
   g <- getGensym
   -- writeLog $ "Current gensym: " ++ show g ++ "\n"
-  writeLog $ "The variables to be substituted: $" ++ show (freeMetaVarInf inf) ++ "$\n"
+  -- writeLog $ "The variables to be substituted: $" ++ show (freeMetaVarInf inf) ++ "$\n"
   return $ refresh g inf
 
 refresh :: Int -> InferenceRule -> InferenceRule
@@ -198,6 +218,9 @@ refresh gen inf = inf `metaSubstituteInf`
 
 -- Actually there is no backtracking happening here
 -- We store all the failures with a Nothing
+
+-- TODO: we need to enhance the log structure in backtracking.
+-- TODO: we can generalize these monads
 
 data StateBacktrack a =  StateBacktrack { getStateBacktrack :: Knowledge -> [(Maybe a, Knowledge)] }
 

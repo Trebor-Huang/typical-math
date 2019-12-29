@@ -63,7 +63,7 @@ inferWith_ :: Judgment -> [InferenceRule] -> StateBacktrack Derivation
 inferWith_ j rules = do
   liftBacktrack $ writeLog $ "Current Goal: $" ++ show j ++ "$\n"
   r <- caseSplit rules  -- use of the backtracking functionality
-  liftBacktrack $ writeLog $ "Tries to use rule: $" ++ show r ++ "$\n"
+  -- liftBacktrack $ writeLog $ "Tries to use rule: $" ++ show r ++ "$\n"
   r <- liftBacktrack $ getFresh r  -- avoids clash
   liftBacktrack $ writeLog $ "Tries to use fresh rule: $" ++ show r ++ "$\n"
   goals <- liftBacktrack $ j `tryInferWithRule` r
@@ -77,6 +77,6 @@ j `inferWith` rules = case [ x | (Just x, kn) <- runStateBacktrack (j `inferWith
   []      -> Nothing
 
 inferWithLog :: Judgment -> [InferenceRule] -> String
-j `inferWithLog` rules = intercalate "\n\nNext case:\n" $ map helper $ runStateBacktrack (j `inferWith_` rules) ignorance
+j `inferWithLog` rules = intercalate "\\newpage\nNext case:\n" $ map helper $ runStateBacktrack (j `inferWith_` rules) ignorance
   where helper (Just d,  kn) = "Succeeded with tree $$" ++ show d ++ "$$ and logstring $$" ++ show kn ++ "$$\n\n"
         helper (Nothing, kn) = "Failed with logstring $$" ++ show kn ++ "$$\n\n"
