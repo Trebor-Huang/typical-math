@@ -168,8 +168,8 @@ data InferenceRule
 
 instance Show InferenceRule where
   show (Rule prems concl name) = "\\frac{\\displaystyle{" ++
-    intercalate "\\quad \n" (map show prems)
-    ++ "}}\n{\\displaystyle{" ++
+    intercalate "\\quad " (map show prems)
+    ++ "}}{\\displaystyle{" ++
     show concl
     ++ "}}" ++ "\\textsc{\\tiny " ++ name ++ "}"
 

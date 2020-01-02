@@ -43,6 +43,7 @@ unify' ((m@(MetaVar n (Shift 0)), expr) : eqs)
   | otherwise = Just ((m, expr) : (substituteEqs eqs [(n, expr)]))
 -- The other part of swap : rigid meta-variables
 unify' ((m'@(MetaVar _ _), m@(MetaVar _ (Shift 0))) : eqs) = Just ((m, m') : eqs)
+unify' ((x, y):eqs) = Just (eqs ++ [(x, y)]) -- postpones this, but we then needs to check for dead-loops
 
 
 unify :: [(ABT, ABT)] -> Maybe Assignment
@@ -58,7 +59,10 @@ unify eqs = do
     result <- unify next
     return result
   where done :: [(ABT, ABT)] -> Bool
-        done eqs = all helper' eqs && not ((map fst eqs) `occurs` (map snd eqs))
+        done [] = True
+        done eqs | not (all dead eqs) = all helper' eqs && not ((map fst eqs) `occurs` (map snd eqs))
+                 | all helper' eqs && not ((map fst eqs) `occurs` (map snd eqs)) = True
+                 | otherwise = error $ "The algorithm gives up on equations " ++ show eqs
 
         helper' :: (ABT, ABT) -> Bool
         helper' (MetaVar n (Shift 0), expr) = True
@@ -77,3 +81,11 @@ unify eqs = do
         helper :: (ABT, ABT) -> (MetaName, ABT)
         helper (MetaVar n (Shift 0), expr) = (n, expr)
         helper _ = error "Panic! The algorithm has something wrong!!"
+
+        dead :: (ABT, ABT) -> Bool
+        dead (Var _, Var _) = False
+        dead (Bind _, Bind _) = False
+        dead (Node _ _, Node _ _) = False
+        dead (_, MetaVar _ (Shift 0)) = False
+        dead (MetaVar _ (Shift 0), _) = True
+        dead (x, y) = not (x == y)
