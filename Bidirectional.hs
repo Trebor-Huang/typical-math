@@ -10,7 +10,7 @@ module Bidirectional
 import           ABT
 import           Control.Applicative (Applicative (..))
 import           Control.Monad       (ap, liftM, join, mapM_, mapM)
-import           Data.List           (intercalate)
+import           Data.List           (intercalate, sortBy)
 import           Match               (match, unify)
 import           Utilities
 import           Knowledge
@@ -77,6 +77,8 @@ j `inferWith` rules = case [ x | (Just x, kn) <- runStateBacktrack (j `inferWith
   []      -> Nothing
 
 inferWithLog :: Judgment -> [InferenceRule] -> String
-j `inferWithLog` rules = intercalate "\\newpage\nNext case:\n" $ map helper $ runStateBacktrack (j `inferWith_` rules) ignorance
+j `inferWithLog` rules = intercalate "\\newpage\nNext case:\n" $ map helper $ sortByLength $ runStateBacktrack (j `inferWith_` rules) ignorance
   where helper (Just d,  kn) = "Succeeded with tree $$" ++ show d ++ "$$ and logstring $$" ++ show kn ++ "$$\n\n"
         helper (Nothing, kn) = "Failed with logstring $$" ++ show kn ++ "$$\n\n"
+        sortByLength ls = sortBy cmpLength ls  -- cmpLength compares backward because we want long ones first
+        cmpLength (_, kn2) (_, kn1) = compare (length $ logstring kn1) (length $ logstring kn2)
