@@ -60,8 +60,8 @@ unify eqs = do
     return result
   where done :: [(ABT, ABT)] -> Bool
         done [] = True
-        done eqs | not (all dead eqs) = all helper' eqs && not ((map fst eqs) `occurs` (map snd eqs))
-                 | all helper' eqs && not ((map fst eqs) `occurs` (map snd eqs)) = True
+        done eqs | all helper' eqs && not ((map fst eqs) `occurs` (map snd eqs)) = True
+                 | not (all dead eqs) = False
                  | otherwise = error $ "The algorithm gives up on equations " ++ show eqs
 
         helper' :: (ABT, ABT) -> Bool

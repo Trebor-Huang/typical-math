@@ -48,8 +48,8 @@ data Knowledge = Knows
     }
 
 instance Show Knowledge where
-  show (Knows a g l) = "\\boxed{\n \\begin{aligned}\n " ++ showAssignment a
-    ++ "\\\\ \n" ++ " & \\textrm{Current Gensym is " ++ show g ++ "} \\\\ \n"
+  show (Knows a g l) = "\\boxed{\n \\begin{aligned}\n "
+    ++ " & \\textrm{Current Gensym is " ++ show g ++ "} \\\\ \n"
     ++ "\\\\ \n" ++ concatMap ((" & \\textrm{" ++) . (++ "} \\\\ \n")) (lines l)
     ++ "\\end{aligned}\n}"
 
@@ -219,7 +219,8 @@ refresh gen inf = inf `metaSubstituteInf`
 -- Actually there is no backtracking happening here
 -- We store all the failures with a Nothing
 
--- TODO: we need to enhance the log structure in backtracking.
+-- TODO: we need to enhance the log structure in backtracking
+-- TODO: for instance, we can do interactive stuff
 -- TODO: we can generalize these monads
 
 data StateBacktrack a =  StateBacktrack { getStateBacktrack :: Knowledge -> [(Maybe a, Knowledge)] }

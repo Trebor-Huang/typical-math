@@ -1,5 +1,5 @@
 -- Tests the Bidirectional.hs system with STLC
-module STLC where
+module Main where
 
 import ABT
 import Utilities
@@ -33,6 +33,7 @@ import Bidirectional
 \newcommand{\primrec}[3]{\mathrm{rec}_{\mathbb N}(#1, #2, #3)}
 \newcommand{\nat}{\mathbb N}
 \newcommand{\SingleBeta}[3]{#1\ #2 \rightsquigarrow_{\beta} #2}
+\newcommand{\Identical}[2]{#1 \equiv_{\rm Syntax} #2}
 -}
 
 empty = Node "emptyctx" []
@@ -76,13 +77,13 @@ primSynth = Rule [synth g n a,
   check g f (to a a)] (synth g (primrec e f n) a) "Rec-Synth"
 normalize g e t n = Node "normalizes" [g, e, t, n]
 normVar = Rule [lkup g x a] (normalize g x a x) "Beta-Var"
-normLam = Rule [fresh g x,
-  normalize g (beta (Bind e) x) b f]
+normLam = Rule [fresh g x, singleBeta (Bind e) x y,
+  normalize g y b f]
   (normalize g (lam a e) (to a b) (lam a f)) "Beta-Lam"
 normBeta = Rule [synth g f a,
-    normalize g e (to a b) (lam a m),
-    normalize g f a n,
-    normalize g (beta (Bind m) n) b y
+    normalize g e (to a b) c, idj c (lam a m),
+    normalize g f a n, singleBeta (Bind m) n x,
+    normalize g x b y
   ] (normalize g (app e f) b y) "Beta"
 normApp = Rule [synth g f a,
     normalize g e (to a b) m,
@@ -117,6 +118,8 @@ ifthenelse a b c = Node "ifthenelse" [a, b, c]
 
 singleBeta f a e = Node "SingleBeta" [f, a, e]
 sBAux = Rule [] (singleBeta (Bind f) a (beta (Bind f) a)) "Beta-Aux"
+idj a b = Node "Identical" [a, b]
+idr = Rule [] (idj a a) "Identical"
 
 true = Node "true" []
 trueBool = Rule [ctx g] (synth g true bool) "True-Bool"
@@ -150,7 +153,8 @@ rules = [justFresh, reFresh,
   varCheck, varSynth, appCheck, appSynth, absCheck, absSynth, checkSynth,
   ifCheck, ifSynth, zSynth, sSynth, primSynth,
   trueBool, falseBool, soleOne,
-  sBAux, normVar, normLam, normBeta, normApp,
+  sBAux, idr,
+  normVar, normLam, normBeta, normApp,
   normIfTrue, normIfFalse,
   normSucc, normZPrim, normSPrim,
   normal]
@@ -213,4 +217,6 @@ test8 = (normalize empty
       )
     (suc $ suc $ suc zro))
   (suc zro))
-  nat e) `inferWith` rules
+  nat e) `inferWithLog` rules
+
+main = putStrLn test8

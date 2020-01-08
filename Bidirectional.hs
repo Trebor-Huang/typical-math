@@ -5,6 +5,7 @@ module Bidirectional
   , checkDerivation
   , inferWith
   , inferWithLog  -- facilates debug process
+  , inferWithLogSorted
   ) where
 
 import           ABT
@@ -65,7 +66,7 @@ inferWith_ j rules = do
   r <- caseSplit rules  -- use of the backtracking functionality
   -- liftBacktrack $ writeLog $ "Tries to use rule: $" ++ show r ++ "$\n"
   r <- liftBacktrack $ getFresh r  -- avoids clash
-  liftBacktrack $ writeLog $ "Tries to use fresh rule: $" ++ show r ++ "$\n"
+  liftBacktrack $ writeLog $ "R " ++ name r ++ " : $" ++ show r ++ "$\n"
   goals <- liftBacktrack $ j `tryInferWithRule` r
   goalDerivations <- inferGoals goals rules
   j <- liftBacktrack $ metaSubstituteFromState j
@@ -76,9 +77,13 @@ j `inferWith` rules = case [ x | (Just x, kn) <- runStateBacktrack (j `inferWith
   (d: ds) -> Just d  -- Hm. Should we throw error on non-singletons?
   []      -> Nothing
 
+helper (Just d,  kn) = "Succeeded with tree $$" ++ show d ++ "$$ and logstring $$" ++ show kn ++ "$$\n\n"
+helper (Nothing, kn) = "Failed with logstring $$" ++ show kn ++ "$$\n\n"
+
 inferWithLog :: Judgment -> [InferenceRule] -> String
-j `inferWithLog` rules = intercalate "\\newpage\nNext case:\n" $ map helper $ sortByLength $ runStateBacktrack (j `inferWith_` rules) ignorance
-  where helper (Just d,  kn) = "Succeeded with tree $$" ++ show d ++ "$$ and logstring $$" ++ show kn ++ "$$\n\n"
-        helper (Nothing, kn) = "Failed with logstring $$" ++ show kn ++ "$$\n\n"
-        sortByLength ls = sortBy cmpLength ls  -- cmpLength compares backward because we want long ones first
+j `inferWithLog` rules = intercalate "\\newpage\nNext case:\n" $ map helper $ runStateBacktrack (j `inferWith_` rules) ignorance
+
+inferWithLogSorted :: Judgment -> [InferenceRule] -> String
+j `inferWithLogSorted` rules = intercalate "\\newpage\nNext case:\n" $ map helper $ sortByLength $ runStateBacktrack (j `inferWith_` rules) ignorance
+  where sortByLength ls = sortBy cmpLength ls  -- cmpLength compares backward because we want long ones first
         cmpLength (_, kn2) (_, kn1) = compare (length $ logstring kn1) (length $ logstring kn2)

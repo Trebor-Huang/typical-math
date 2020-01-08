@@ -1,5 +1,5 @@
 \documentclass{article}
-\usepackage[a0paper, landscape]{geometry}
+\usepackage[a0paper]{geometry}
 \usepackage{amssymb}
 \usepackage{amsmath}
 
@@ -10,8 +10,8 @@
 \newcommand{\ctx}[1]{#1 \ \mathsf{ctx}}
 \newcommand{\type}[1]{#1 \ \mathsf{type}}
 \newcommand{\var}[1]{#1 \ \mathsf{var}}
-\newcommand{\lookup}[3]{#1 \vdash\, #2 \mathbf{lookup} \rightsquigarrow #3}
-\newcommand{\synth}[3]{#1 \vdash\, #2 \mathbf{synth} \rightsquigarrow #3}
+\newcommand{\lookup}[3]{#1 \vdash\, #2 \, \mathbf{lookup} \rightsquigarrow #3}
+\newcommand{\synth}[3]{#1 \vdash\, #2 \, \mathbf{synth} \rightsquigarrow #3}
 \newcommand{\checkj}[3]{#1 \vdash \mathbf{check}\, #2 : #3}
 \newcommand{\normalizes}[4]{#1 \vdash\, #2 \rightsquigarrow_\beta^{#3} #4}
 \newcommand{\fresh}[2]{#1 \vdash \mathbf{fresh} \rightsquigarrow #2}
@@ -27,11 +27,11 @@
 \newcommand{\successor}[1]{\mathrm{succ}(#1)}
 \newcommand{\primrec}[3]{\mathrm{rec}_{\mathbb N}(#1, #2, #3)}
 \newcommand{\nat}{\mathbb{N}}
-\newcommand{\SingleBeta}[3]{#1\ #2 \rightsquigarrow_{\beta} #2}
+\newcommand{\SingleBeta}[3]{#1\ #2 \rightsquigarrow_{\beta} #3}
+\newcommand{\Identical}[2]{#1 \equiv_{\rm Syntax} #2}
 
 \begin{document}
 Hello!
-$$
-[(?M_{1}\left[\mathtt{v}_{0} . \uparrow^{1}\right],\primrec{\mathtt{v}_{0}}{\abstraction{\nat}{.\successor{\mathtt{v}_{0}}}}{\star}),(?\Gamma_{66},\emptyctx),(?x_{66},\abstraction{\nat}{.\primrec{\mathtt{v}_{0}}{\abstraction{\nat}{.\successor{\mathtt{v}_{0}}}}{\star}}),(?A_{66},\To{\nat}{\nat})]
-$$
+
+\input{test.tex}
 \end{document}
