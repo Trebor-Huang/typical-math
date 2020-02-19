@@ -6,62 +6,67 @@ module Match
 import           ABT
 import           Utilities (mergeAssoc, mergeAssocs, substituteEqs, freeMetaVarEqs)
 
-match :: ABT -> ABT -> Maybe Assignment
+match :: ABT -> ABT -> Either String Assignment
 -- match expr pattern ~> association list of meta-vars and expr's
 -- in principle, the matched meta-vars should have no closure (Shift 0).
-match e (MetaVar n (Shift 0)) = Just [(n, e)]
-match _ (MetaVar _ _) = Nothing
+match e (MetaVar n (Shift 0)) = Right [(n, e)]
+match e m@(MetaVar _ _) = Left $ "Meta-var with closure encountered, matching aborted : " ++ (show e) ++ " against " ++ (show m)
 match (Var x) (Var y)
-  | x == y = Just []
-  | x /= y = Nothing
+  | x == y = Right []
+  | x /= y = Left $ "Variable mismatch: " ++ (show x) ++ " and " ++ (show y)
 match (Node n args) (Node n' args')
-  | n == n' = mergeAssocs =<< mapM (uncurry match) (zip args args')
+  | n == n' = helper2 $ mergeAssocs =<< mapM helper (map (uncurry match) (zip args args'))
+  where helper (Right r) = Just r
+        helper (Left s)  = Nothing
+        helper2 (Just a) = Right a
+        helper2 Nothing = Left "Conflicting equations."
 match (Bind e) (Bind e') = match e e'
-match (MetaVar _ _) _ = Nothing
-match _ _ = Nothing
+match m@(MetaVar _ _) e = Left $ "Metavariables on the wrong side: " ++ (show m) ++ " against " ++ (show e)
+match _ _ = Left "Unknown error encountered in matching."
 
-unify' :: [(ABT, ABT)] -> Maybe [(ABT, ABT)]
+unify' :: [(ABT, ABT)] -> Either String [(ABT, ABT)]
 -- one cycle of the unification process
-unify' [] = Just []
+unify' [] = Right []
 -- Delete / Decompose / Conflict
-unify' ((Var v1, Var v2) : eqs) | v1 /= v2  = Nothing
-                                | otherwise = Just eqs
-unify' ((Bind e1, Bind e2) : eqs) = Just ((e1, e2) : eqs)
+unify' ((Var v1, Var v2) : eqs) | v1 /= v2  = Left $ "Variable mismatch : " ++ (show v1) ++ " and " ++ (show v2)
+                                | otherwise = Right eqs
+unify' ((Bind e1, Bind e2) : eqs) = Right ((e1, e2) : eqs)
 unify' ((Node n args, Node n' args') : eqs)
-    | n /= n'                     = Nothing
-    | length args /= length args' = Nothing
-    | otherwise = Just ((zip args args') ++ eqs)
+    | n /= n'                     = Left $ "Node name mismatch : " ++ n ++ " and " ++ n'
+    | length args /= length args' = Left $ "Node arity mismatch : " ++ n ++ " and " ++ n'
+    | otherwise = Right ((zip args args') ++ eqs)
 -- Swap
-unify' ((v@(Var _),    m@(MetaVar _ (Shift 0))) : eqs) = Just ((m, v) : eqs)
-unify' ((n@(Node _ _), m@(MetaVar _ (Shift 0))) : eqs) = Just ((m, n) : eqs)
-unify' ((b@(Bind _),   m@(MetaVar _ (Shift 0))) : eqs) = Just ((m, b) : eqs)
+unify' ((v@(Var _),    m@(MetaVar _ (Shift 0))) : eqs) = Right ((m, v) : eqs)
+unify' ((n@(Node _ _), m@(MetaVar _ (Shift 0))) : eqs) = Right ((m, n) : eqs)
+unify' ((b@(Bind _),   m@(MetaVar _ (Shift 0))) : eqs) = Right ((m, b) : eqs)
 -- Eliminate / Check
 unify' ((m@(MetaVar n (Shift 0)), expr) : eqs)
-  | m == expr = Just eqs
-  | m `elem` (freeMetaVar expr) = Nothing
-  | m `notElem` (freeMetaVarEqs eqs) = Just (eqs ++ [(m, expr)])
-  | otherwise = Just ((m, expr) : (substituteEqs eqs [(n, expr)]))
+  | m == expr = Right eqs
+  | m `elem` (freeMetaVar expr) = Left $ "Occurs check : " ++ show m ++ " ~ " ++ show expr
+  | m `notElem` (freeMetaVarEqs eqs) = Right (eqs ++ [(m, expr)])
+  | otherwise = Right ((m, expr) : (substituteEqs eqs [(n, expr)]))
 -- The other part of swap : rigid meta-variables
-unify' ((m'@(MetaVar _ _), m@(MetaVar _ (Shift 0))) : eqs) = Just ((m, m') : eqs)
-unify' ((x, y):eqs) = Just (eqs ++ [(x, y)]) -- postpones this, but we then needs to check for dead-loops
+unify' ((m'@(MetaVar _ _), m@(MetaVar _ (Shift 0))) : eqs) = Right ((m, m') : eqs)
+unify' ((x, y):eqs) = Right (eqs ++ [(x, y)]) -- postpones this, but we then needs to check for dead-loops
 
 
-unify :: [(ABT, ABT)] -> Maybe Assignment
+unify :: [(ABT, ABT)] -> Either String Assignment
 -- unify equations ~> substitutions
 -- TODO this currently sees meta-variables with closures as rigid.
 -- we may implement a more powerful unification algorithm that
 -- helps implicit argument inference.
 unify eqs = do
-  if done eqs then
-    return (clean eqs)
-  else do
-    next <- unify' eqs
-    result <- unify next
-    return result
-  where done :: [(ABT, ABT)] -> Bool
-        done [] = True
-        done eqs | all helper' eqs && not ((map fst eqs) `occurs` (map snd eqs)) = True
-                 | not (all dead eqs) = False
+  d <- done eqs
+  if d
+    then return (clean eqs)
+    else do
+      next <- unify' eqs
+      result <- unify next
+      return result
+  where done :: [(ABT, ABT)] -> Either String Bool
+        done [] = Right True
+        done eqs | all helper' eqs && not ((map fst eqs) `occurs` (map snd eqs)) = Right True
+                 | not (all dead eqs) = Right False
                  | otherwise = error $ "The algorithm gives up on equations " ++ show eqs
 
         helper' :: (ABT, ABT) -> Bool

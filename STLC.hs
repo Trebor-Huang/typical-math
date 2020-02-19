@@ -34,6 +34,7 @@ import Bidirectional
 \newcommand{\nat}{\mathbb N}
 \newcommand{\SingleBeta}[3]{#1\ #2 \rightsquigarrow_{\beta} #2}
 \newcommand{\Identical}[2]{#1 \equiv_{\rm Syntax} #2}
+\newcommand{\packup}[2]{#1 \sim #2}
 -}
 
 empty = Node "emptyctx" []
@@ -48,6 +49,14 @@ var t = Node "var" [t]
 
 varVar = Rule [] (var variable) "Var-Var"
 varApo = Rule [var x] (var (apostrophe x)) "Var-Apo"
+
+packup x e e' = Node "packup" [x, e, e']
+
+packup0 = Rule [] (packup variable variable (Var 0)) "packup-0"
+packupVar = Rule [] (packup x y y) "packup-var"
+packup' = Rule [packup x x y] (packup (apostrophe x) (apostrophe x) (substitute y (Shift 1))) "packup-'"
+packupApp = Rule [packup x a b, packup x m n] (packup x (app a b) (app m n)) "packup-app"
+packupLam = Rule [packup x e f] (packup x (lam t e) (lam t f)) "packup-lam"
 
 emptyCtx = Rule [] (ctx empty) "Ctx-Empty"
 consCtx  = Rule [ctx g, tp a] (ctx (cons g a)) "Ctx-Cons"
@@ -77,13 +86,12 @@ primSynth = Rule [synth g n a,
   check g f (to a a)] (synth g (primrec e f n) a) "Rec-Synth"
 normalize g e t n = Node "normalizes" [g, e, t, n]
 normVar = Rule [lkup g x a] (normalize g x a x) "Beta-Var"
-normLam = Rule [fresh g x, singleBeta (Bind e) x y,
-  normalize g y b f]
-  (normalize g (lam a e) (to a b) (lam a f)) "Beta-Lam"
+normLam = Rule [fresh g x, normalize (cons g a) (beta (Bind e) x) b f, packup x f m]
+  (normalize g (lam a e) (to a b) (lam a m)) "Beta-Lam"
 normBeta = Rule [synth g f a,
-    normalize g e (to a b) c, idj c (lam a m),
-    normalize g f a n, singleBeta (Bind m) n x,
-    normalize g x b y
+    normalize g e (to a b) (lam a m),
+    normalize g f a n,
+    normalize g (beta (Bind m) n) b y
   ] (normalize g (app e f) b y) "Beta"
 normApp = Rule [synth g f a,
     normalize g e (to a b) m,
@@ -116,10 +124,12 @@ lam' t e = Node "abstraction" [t, e]
 app e f = Node "application" [e, f]
 ifthenelse a b c = Node "ifthenelse" [a, b, c]
 
+{-
 singleBeta f a e = Node "SingleBeta" [f, a, e]
 sBAux = Rule [] (singleBeta (Bind f) a (beta (Bind f) a)) "Beta-Aux"
 idj a b = Node "Identical" [a, b]
 idr = Rule [] (idj a a) "Identical"
+-}
 
 true = Node "true" []
 trueBool = Rule [ctx g] (synth g true bool) "True-Bool"
@@ -134,8 +144,6 @@ suc n = Node "successor" [n]
 
 primrec z s i = Node "primrec" [z, s, i]
 
-normal = Rule [check g e a] (normalize g e a e) "Normal"
-
 to a b = Node "To" [a, b]
 bool = Node "Bool" []
 one = Node "One" []
@@ -145,26 +153,30 @@ oneType  = Rule [] (tp one)  "One-Form"
 toType   = Rule [tp a, tp b] (tp (a `to` b)) "To-Form"
 natType  = Rule [] (tp nat) "Nat-Form"
 
+normal e t s = Rule [] (normalize g e t e) s
+
 rules = [justFresh, reFresh,
   emptyCtx, consCtx,
   lookupStop, lookupPop,
   boolType, oneType, toType, natType,
+  packup0, packup', packupApp, packupLam, packupVar,
   varVar, varApo,
   varCheck, varSynth, appCheck, appSynth, absCheck, absSynth, checkSynth,
-  ifCheck, ifSynth, zSynth, sSynth, primSynth,
-  trueBool, falseBool, soleOne,
-  sBAux, idr,
+  -- ifCheck, ifSynth, 
+  zSynth, sSynth, -- primSynth,
+  -- trueBool, falseBool, soleOne,
+  -- sBAux, idr,
   normVar, normLam, normBeta, normApp,
-  normIfTrue, normIfFalse,
-  normSucc, normZPrim, normSPrim,
-  normal]
+  -- normIfTrue, normIfFalse,
+  -- normSucc, normZPrim, normSPrim,
+  normal zro nat "Normal-O"]
 
-test2 = (ctx (cons 
+test1 = (ctx (cons 
       (cons empty (to one one))
       (to (to bool one) bool)
     )
   ) `inferWith` rules
-test3 = 
+test2 = 
   (lkup 
     (cons
       (cons
@@ -173,12 +185,12 @@ test3 =
       (to (to bool bool) bool))
     (apostrophe variable)
     a) `inferWith` rules  -- this is looking like lisp??!
-test4 =
+test3 =
   (synth
     empty
     (lam bool (Var 0))
     a) `inferWith` rules
-test5 =
+test4 =
   (synth
     empty
     (lam (to one (to bool bool)) 
@@ -190,8 +202,8 @@ test5 =
           ))))
     a) `inferWith` rules
 
-test6 = (normalize empty (app (lam bool (Var 0)) true) bool e) `inferWith` rules
-test7 = (normalize empty
+test5 = (normalize empty (app (lam bool (Var 0)) true) bool e) `inferWith` rules
+test6 = (normalize empty
   (ifthenelse
     (app
       (lam bool (ifthenelse
@@ -203,7 +215,30 @@ test7 = (normalize empty
     false)
   bool e) `inferWith` rules
 
-test8 = (normalize empty 
+test7 = (normalize empty
+  (app
+    (lam nat
+      (Var 0))
+    zro)
+  nat e) `inferWith` rules
+
+test8 = (normalize empty
+  (app
+    (lam nat
+      (lam nat
+        (Var 1)))
+    zro)
+  (to nat nat) e) `inferWith` rules
+
+test9 = (normalize empty
+  (app
+    (lam nat
+      (lam nat
+        (Var 0)))
+    zro)
+  (to nat nat) e) `inferWith` rules
+
+test10 = (normalize empty 
   (app 
     (app
       (lam nat -- x
@@ -219,4 +254,5 @@ test8 = (normalize empty
   (suc zro))
   nat e) `inferWithLog` rules
 
-main = putStrLn test8
+
+main = putStrLn test10

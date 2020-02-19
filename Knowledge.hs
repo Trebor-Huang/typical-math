@@ -120,9 +120,9 @@ writeLog log = do
 panic :: LogDoc -> State a
 panic d = State (\s -> (Nothing, s {logstring = logstring s ++ d}))
 
-mergeMatch :: Maybe Assignment -> State ()
-mergeMatch Nothing = panic "Match Failed\n"
-mergeMatch (Just ass) = do
+mergeMatch :: Either String Assignment -> State ()
+mergeMatch (Left s) = panic (s ++ "\n")
+mergeMatch (Right ass) = do
   k <- get
   case (mergeAssoc ass (assignment k)) of
     Just assignment -> do

@@ -29,9 +29,86 @@
 \newcommand{\nat}{\mathbb{N}}
 \newcommand{\SingleBeta}[3]{#1\ #2 \rightsquigarrow_{\beta} #3}
 \newcommand{\Identical}[2]{#1 \equiv_{\rm Syntax} #2}
+\newcommand{\packup}[3]{#2 \sim_{#1} #3}
 
 \begin{document}
 Hello!
-
-\input{test.tex}
+$$
+{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}}}
+{\synth{\emptyctx}{\zero}{\nat}}\vphantom{ Zero-Synth}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\fresh{\emptyctx}{\star}}\vphantom{ JustFresh}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\type{\nat}}\vphantom{ Nat-Form}
+}\quad {
+\frac{\displaystyle{}}
+{\fresh{\emptyctx}{\star}}\vphantom{ JustFresh}
+}}}
+{\fresh{\consctx{\emptyctx}{\nat}}{\apostr{\star}}}\vphantom{ Refresh}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\ctx{\emptyctx}}\vphantom{ Ctx-Empty}
+}\quad {
+\frac{\displaystyle{}}
+{\type{\nat}}\vphantom{ Nat-Form}
+}}}
+{\ctx{\consctx{\emptyctx}{\nat}}}\vphantom{ Ctx-Cons}
+}\quad {
+\frac{\displaystyle{}}
+{\type{\nat}}\vphantom{ Nat-Form}
+}}}
+{\ctx{\consctx{\consctx{\emptyctx}{\nat}}{\nat}}}\vphantom{ Ctx-Cons}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\type{\nat}}\vphantom{ Nat-Form}
+}\quad {
+\frac{\displaystyle{}}
+{\fresh{\emptyctx}{\star}}\vphantom{ JustFresh}
+}}}
+{\fresh{\consctx{\emptyctx}{\nat}}{\apostr{\star}}}\vphantom{ Refresh}
+}}}
+{\lookup{\consctx{\consctx{\emptyctx}{\nat}}{\nat}}{\apostr{\star}}{\nat}}\vphantom{ Lookup-Stop}
+}}}
+{\normalizes{\consctx{\consctx{\emptyctx}{\nat}}{\nat}}{\apostr{\star}}{\nat}{\apostr{\star}}}\vphantom{ Beta-Var}
+}\quad {
+\frac{\displaystyle{}}
+{\packup{\apostr{\star}}{\apostr{\star}}{\apostr{\star}}}\vphantom{ packup-var}
+}\quad {
+\frac{\displaystyle{}}
+{\Identical{\apostr{\star}}{\apostr{\star}}}\vphantom{ Identical}
+}}}
+{\normalizes{\consctx{\emptyctx}{\nat}}{\abstraction{\nat}{.\mathtt{v}_{0}}}{\To{\nat}{\nat}}{\abstraction{\nat}{.\apostr{\star}}}}\vphantom{ Beta-Lam}
+}\quad {
+\frac{\displaystyle{{
+\frac{\displaystyle{}}
+{\packup{\star}{\apostr{\star}}{\apostr{\star}}}\vphantom{ packup-var}
+}}}
+{\packup{\star}{\abstraction{\nat}{.\apostr{\star}}}{\abstraction{\nat}{.\apostr{\star}}}}\vphantom{ packup-lam}
+}\quad {
+\frac{\displaystyle{}}
+{\Identical{\abstraction{\nat}{.\apostr{\star}}}{\abstraction{\nat}{.\apostr{\star}}}}\vphantom{ Identical}
+}}}
+{\normalizes{\emptyctx}{\abstraction{\nat}{.\abstraction{\nat}{.\mathtt{v}_{0}}}}{\To{\nat}{\To{\nat}{\nat}}}{\abstraction{\nat}{.\abstraction{\nat}{.\apostr{\star}}}}}\vphantom{ Beta-Lam}
+}\quad {
+\frac{\displaystyle{}}
+{\normalizes{\emptyctx}{\zero}{\nat}{\zero}}\vphantom{ Normal-O}
+}}}
+{\normalizes{\emptyctx}{\application{\abstraction{\nat}{.\abstraction{\nat}{.\mathtt{v}_{0}}}}{\zero}}{\To{\nat}{\nat}}{\application{\abstraction{\nat}{.\abstraction{\nat}{.\apostr{\star}}}}{\zero}}}\vphantom{ Beta-App}
+}
+$$
 \end{document}
