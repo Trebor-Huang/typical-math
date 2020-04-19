@@ -5,6 +5,7 @@ module Match
 
 import           ABT
 import           Utilities (mergeAssoc, mergeAssocs, substituteEqs, freeMetaVarEqs)
+import           Control.Monad (zipWithM)
 
 match :: ABT -> ABT -> Either String Assignment
 -- match expr pattern ~> association list of meta-vars and expr's
@@ -15,11 +16,9 @@ match (Var x) (Var y)
   | x == y = Right []
   | x /= y = Left $ "Variable mismatch: " ++ (show x) ++ " and " ++ (show y)
 match (Node n args) (Node n' args')
-  | n == n' = helper2 $ mergeAssocs =<< mapM helper (map (uncurry match) (zip args args'))
-  where helper (Right r) = Just r
-        helper (Left s)  = Nothing
-        helper2 (Just a) = Right a
-        helper2 Nothing = Left "Conflicting equations."
+  | n == n' = (helper . mergeAssocs) =<< zipWithM match args args'
+  where helper (Just a) = Right a
+        helper Nothing = Left "Conflicting equations."
 match (Bind e) (Bind e') = match e e'
 match m@(MetaVar _ _) e = Left $ "Metavariables on the wrong side: " ++ (show m) ++ " against " ++ (show e)
 match _ _ = Left "Unknown error encountered in matching."
@@ -58,7 +57,7 @@ unify :: [(ABT, ABT)] -> Either String Assignment
 unify eqs = do
   d <- done eqs
   if d
-    then return (clean eqs)
+    then return $ map (\(MetaVar n (Shift 0), u) -> (n, u)) eqs
     else do
       next <- unify' eqs
       result <- unify next
@@ -67,25 +66,15 @@ unify eqs = do
         done [] = Right True
         done eqs | all helper' eqs && not ((map fst eqs) `occurs` (map snd eqs)) = Right True
                  | not (all dead eqs) = Right False
-                 | otherwise = error $ "The algorithm gives up on equations " ++ show eqs
+                 | otherwise = Left $ "The algorithm gives up on equations " ++ show eqs
 
         helper' :: (ABT, ABT) -> Bool
-        helper' (MetaVar n (Shift 0), expr) = True
+        helper' (MetaVar _ (Shift 0), _) = True
         helper' _ = False
 
+        -- ms are metas without closure
         occurs :: [ABT] -> [ABT] -> Bool
-        occurs ms exprs = any (`elem` (concatMap freeMetaVar exprs)) (map clean' ms)
-
-        clean' :: ABT -> ABT
-        clean' m@(MetaVar _ (Shift 0)) = m
-        clean' _ = error "Panic! The algorithm has something wrong!!"
-
-        clean :: [(ABT, ABT)] -> Assignment
-        clean = map helper
-        
-        helper :: (ABT, ABT) -> (MetaName, ABT)
-        helper (MetaVar n (Shift 0), expr) = (n, expr)
-        helper _ = error "Panic! The algorithm has something wrong!!"
+        occurs ms exprs = any (`elem` (concatMap freeMetaVar exprs)) ms
 
         dead :: (ABT, ABT) -> Bool
         dead (Var _, Var _) = False

@@ -13,7 +13,7 @@ module ABT
   , nubMetaVar
   ) where
 
-import           Data.List           (intercalate, groupBy, sortBy)
+import           Data.List           (intercalate, groupBy, minimumBy)
 
 type VarName = Int
 type NodeType = String
@@ -74,24 +74,18 @@ beta x         y  = error $ "beta is for Bind only." ++ show x ++ show y
 
 metaSubstitute :: ABT -> Assignment -> ABT
 metaSubstitute p [] = p
-metaSubstitute m@(MetaVar n s) msubs = case dict n msubs of
+metaSubstitute m@(MetaVar n s) msubs = case lookup n msubs of
   Just e  -> substitute e (msc s msubs) -- This is supposed to be simultaneous..?
   Nothing -> MetaVar n (msc s msubs)
   where msc :: Substitution -> Assignment -> Substitution
         msc (Shift n) _   = Shift n
         msc (Dot e t) ass = Dot (metaSubstitute e ass) (msc t ass)
-
-        dict :: (Eq a) => a -> [(a, b)] -> Maybe b
-        dict _ [] = Nothing
-        dict a ((a', b) : ls)
-          | a == a'   = Just b
-          | otherwise = dict a ls
 metaSubstitute v@(Var _)      _     = v
 metaSubstitute (Node nt abts) msubs = Node nt (map (`metaSubstitute` msubs) abts)
 metaSubstitute (Bind abt)     msubs = Bind (metaSubstitute abt msubs)
 
 nubMetaVar :: [ABT] -> [ABT]
-nubMetaVar vs = map pick $ groupBy nameEq vs
+nubMetaVar = map (minimumBy helperOrder) . groupBy nameEq
   where nameEq :: ABT -> ABT -> Bool
         nameEq (MetaVar n _) (MetaVar m _) = n == m
         nameEq _ _ = error "Panic! Non-meta-vars appeared at strange places!"
@@ -102,8 +96,6 @@ nubMetaVar vs = map pick $ groupBy nameEq vs
         helperOrder e f | e == f = EQ
                         | otherwise = error $ "Panic! Meta-vars with closures clashed, giving up on:\n    "
                           ++ show e ++ "\n  and\n    " ++ show f
-        pick :: [ABT] -> ABT
-        pick ls = head $ sortBy helperOrder ls
 
 freeMetaVar :: ABT -> [ABT]
 freeMetaVar (Var _) = []

@@ -12,6 +12,8 @@ import           ABT
 import           Control.Applicative (Applicative (..))
 import           Control.Monad       (ap, liftM, join, mapM_, mapM)
 import           Data.List           (intercalate, sortBy)
+import           Data.Maybe          (isJust, listToMaybe)
+import           Data.Ord            (comparing)
 import           Match               (match, unify)
 import           Utilities
 import           Knowledge
@@ -29,17 +31,13 @@ checkDerivation_ derivation = do
   else do
     -- first we need to ensure that the premises are in the correct form
     -- as asserted by the `useRule`
-    mapM_ (mergeMatch . (uncurry match))
-      (zip (map judgment (derivePremise derivation)) (premises useRule))
+    mapM_ mergeMatch $
+      zipWith match (map judgment (derivePremise derivation)) (premises useRule)
       -- next we check the premises' derivation, recursively
-    currentState <- get
     mapM_ checkDerivation_ (derivePremise derivation)
 
 checkDerivation :: Derivation -> Bool
-checkDerivation d = case runState (checkDerivation_ d) ignorance of
-  (Just (), _) -> True
-  (Nothing, _) -> False
-
+checkDerivation d = isJust $ fst $ runState (checkDerivation_ d) ignorance
 
 tryInferWithRule :: Judgment -> InferenceRule -> State [Judgment]
 j `tryInferWithRule` (Rule prems concl name) = do
@@ -73,9 +71,7 @@ inferWith_ j rules = do
   return $ Derivation r goalDerivations j
 
 inferWith :: Judgment -> [InferenceRule] -> Maybe Derivation
-j `inferWith` rules = case [ x | (Just x, kn) <- runStateBacktrack (j `inferWith_` rules) ignorance] of
-  (d: ds) -> Just d  -- Hm. Should we throw error on non-singletons?
-  []      -> Nothing
+j `inferWith` rules = listToMaybe [ x | (Just x, kn) <- runStateBacktrack (j `inferWith_` rules) ignorance]
 
 helper (Just d,  kn) = "Succeeded with tree $$" ++ show d ++ "$$ and logstring $$" ++ show kn ++ "$$\n\n"
 helper (Nothing, kn) = "Failed with logstring $$" ++ show kn ++ "$$\n\n"
@@ -84,6 +80,6 @@ inferWithLog :: Judgment -> [InferenceRule] -> String
 j `inferWithLog` rules = intercalate "\\newpage\nNext case:\n" $ map helper $ runStateBacktrack (j `inferWith_` rules) ignorance
 
 inferWithLogSorted :: Judgment -> [InferenceRule] -> String
-j `inferWithLogSorted` rules = intercalate "\\newpage\nNext case:\n" $ map helper $ sortByLength $ runStateBacktrack (j `inferWith_` rules) ignorance
-  where sortByLength ls = sortBy cmpLength ls  -- cmpLength compares backward because we want long ones first
-        cmpLength (_, kn2) (_, kn1) = compare (length $ logstring kn1) (length $ logstring kn2)
+j `inferWithLogSorted` rules = intercalate "\\newpage\nNext case:\n" $ map helper $ sortBy (comparing len) $ runStateBacktrack (j `inferWith_` rules) ignorance
+  where len = negate . length . logstring . snd
+        -- negate to reverse the ordering because we want the long ones first
