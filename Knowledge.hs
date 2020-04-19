@@ -1,12 +1,11 @@
+{-# LANGUAGE MultiParamTypeClasses, TupleSections #-}
 module Knowledge
   ( LogDoc
   , Knowledge(..)
   , ignorance
   , State(..)
-  , runState
   , get
-  , set
-  , withState
+  , put
   , getAssignment
   , getGensym
   , getFresh
@@ -24,12 +23,12 @@ module Knowledge
   , StateBacktrack(..)
   , liftBacktrack
   , caseSplit
-  , runStateBacktrack
   ) where
 
 import           ABT
 import           Control.Applicative (Applicative (..))
 import           Control.Monad       (ap, liftM, join, mapM_, mapM)
+import           Control.Monad.State (MonadState (..), gets, modify)
 import           Data.List           (intercalate)
 import           Match               (match, unify)
 import           Utilities
@@ -55,7 +54,7 @@ instance Show Knowledge where
 
 ignorance = Knows [] 0 "Starting from ignorance;\n"
 
-data State a =  State { getState :: Knowledge -> (Maybe a, Knowledge) }
+newtype State a = State { runState :: Knowledge -> (Maybe a, Knowledge) }
 
 instance Functor State where
   fmap = liftM
@@ -73,49 +72,30 @@ instance Monad State where
       Nothing -> (Nothing, state)
     )
 
+instance MonadState Knowledge State where
+  get = State (\s -> (Just s, s))
+  put k = State (\s -> (Just (), k))
+  state f = State (\s -> let (a, s') = f s in (Just a, s'))
+
 -- Several utilities for the state monad.
 
-runState :: State a -> Knowledge -> (Maybe a, Knowledge)
-runState (State f) i = f i
-
-get :: State Knowledge
-get = State (\s -> (Just s, s))
-
-set :: Knowledge -> State ()
-set k = State (\s -> (Just (), k))
-
-withState :: a -> Knowledge -> State a
-d `withState` s = State (\s -> (Just d, s))
-
 getAssignment :: State Assignment
-getAssignment = do
-  k <- get
-  return (assignment k)
+getAssignment = gets assignment
 
 setAssignment :: Assignment -> State ()
-setAssignment ass = do
-  k <- get
-  set (k{assignment = ass})
+setAssignment ass = modify (\x -> x { assignment = ass })
 
 getGensym :: State Int
-getGensym = do
-  k <- get
-  return (gensym k)
+getGensym = gets gensym
 
 setGensym :: Int -> State ()
-setGensym n = do
-  k <- get
-  set (k{gensym = n})
+setGensym ass = modify (\x -> x { gensym = ass })
 
 incGensym :: State ()
-incGensym = do
-  n <- getGensym
-  setGensym (n+1)
+incGensym = modify (\x -> x { gensym = gensym x + 1 })
 
 writeLog :: LogDoc -> State ()
-writeLog log = do
-  state <- get
-  set (state {logstring = (logstring state ++ log)})
+writeLog log = modify (\s -> s { logstring = (logstring s ++ log) })
 
 panic :: LogDoc -> State a
 panic d = State (\s -> (Nothing, s {logstring = logstring s ++ d}))
@@ -125,10 +105,8 @@ mergeMatch (Left s) = panic (s ++ "\n")
 mergeMatch (Right ass) = do
   k <- get
   case (mergeAssoc ass (assignment k)) of
-    Just assignment -> do
-      set (k{assignment = assignment})
-    Nothing -> do
-      panic "Match success but merge failed\n"
+    Just assignment -> put (k {assignment = assignment})
+    Nothing -> panic "Match success but merge failed\n"
 
 metaSubstituteFromState :: ABT -> State ABT
 metaSubstituteFromState expr = do
@@ -174,7 +152,7 @@ instance Show InferenceRule where
     ++ "}}" ++ "\\textsc{\\tiny " ++ name ++ "}"
 
 
-freeMetaVarInf r = nubMetaVar $ freeMetaVar (conclusion r) ++ concatMap freeMetaVar (premises r)
+freeMetaVarInf r = nubMetaVar $ concatMap freeMetaVar (conclusion r : premises r)
 metaSubstituteInf r subs = Rule (map (`metaSubstitute` subs) (premises r))
   ((conclusion r) `metaSubstitute` subs) (name r)
 
@@ -223,7 +201,7 @@ refresh gen inf = inf `metaSubstituteInf`
 -- TODO: for instance, we can do interactive stuff
 -- TODO: we can generalize these monads
 
-data StateBacktrack a =  StateBacktrack { getStateBacktrack :: Knowledge -> [(Maybe a, Knowledge)] }
+newtype StateBacktrack a =  StateBacktrack { runStateBacktrack :: Knowledge -> [(Maybe a, Knowledge)] }
 
 instance Functor StateBacktrack where
   fmap = liftM
@@ -233,20 +211,17 @@ instance Applicative StateBacktrack where
   (<*>) = ap
 
 instance Monad StateBacktrack where
-  return x = StateBacktrack (\s -> [(Just x, s)])
+  return x = StateBacktrack $ pure . (Just x,)
 
   (StateBacktrack p) >>= f = StateBacktrack (\s ->
       [ b | a <- p s, b <- case fst a of
           Nothing -> [(Nothing, snd a)]
-          Just ar -> getStateBacktrack (f $ ar) (snd a)
+          Just ar -> runStateBacktrack (f $ ar) (snd a)
         ]
     )
 
-runStateBacktrack :: StateBacktrack a -> Knowledge -> [(Maybe a, Knowledge)]
-runStateBacktrack (StateBacktrack f) s = f s
-
 liftBacktrack :: State a -> StateBacktrack a
-liftBacktrack (State f) = StateBacktrack (\s -> [f s])
+liftBacktrack (State f) = StateBacktrack (pure . f)
 
 caseSplit :: [a] -> StateBacktrack a
 caseSplit cases = StateBacktrack (\s -> [(Just c, s) | c <- cases])

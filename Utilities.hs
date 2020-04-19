@@ -7,25 +7,22 @@ module Utilities
   , showAssignment
   ) where
 
-import           Control.Monad (foldM, join, liftM2, mapM, liftM)
+import           Control.Monad (guard, foldM)
 import           ABT
 
 -- utilities
 mergeAssoc :: Assignment -> Assignment -> Maybe Assignment
-mergeAssoc [] assoc = Just assoc
-mergeAssoc ((k, v):as) assoc =
-  (append (k, v) assoc) >>= (\assoc' -> mergeAssoc as assoc')
-  where
-    append :: (MetaName, ABT) -> Assignment -> Maybe Assignment
-    append (k, v) assoc
-      | k `elem` (map fst assoc) =
-        case v == snd (head (filter ((== k) . fst) assoc)) of
-          True  -> Just assoc
-          False -> Nothing
-      | otherwise = Just ((k, v) : assoc `substituteSubs` [(k, v)])
+-- require Alternative m to use `guard` function
+mergeAssoc [] assoc = return assoc
+mergeAssoc ((k, v):as) assoc = (append (k, v) assoc) >>= mergeAssoc as
+  where append :: (MetaName, ABT) -> Assignment -> Maybe Assignment
+        append (k, v) assoc =
+          case lookup k assoc of
+            Just v' -> guard (v == v') >> return assoc
+            Nothing -> return $ (k, v) : assoc `substituteSubs` [(k, v)]
 
 mergeAssocs :: [Assignment] -> Maybe Assignment
-mergeAssocs asss = join $ foldM (liftM2 mergeAssoc) (Just []) (map Just asss)
+mergeAssocs asss = foldM mergeAssoc [] asss
 
 substituteEqs :: [(ABT, ABT)] -> Assignment -> [(ABT, ABT)]
 substituteEqs eqs subs =
@@ -40,7 +37,7 @@ metaSubstituteCompose = flip substituteSubs
 freeMetaVarEqs :: [(ABT, ABT)] -> [ABT]
 freeMetaVarEqs = nubMetaVar . concatMap helper
   where helper :: (ABT, ABT) -> [ABT]
-        helper (e1, e2) = nubMetaVar $ (freeMetaVar e1) ++ (freeMetaVar e2)
+        helper (e1, e2) = (freeMetaVar e1) ++ (freeMetaVar e2)
 
 justMetaVar :: String -> ABT
 justMetaVar s = MetaVar (Meta s 0) (Shift 0)
